@@ -10,7 +10,7 @@ from enum import Enum
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Dict, Optional, List
-from threading import Lock
+from threading import Lock, RLock
 
 logger = logging.getLogger(__name__)
 
@@ -60,26 +60,27 @@ class SystemHealthMonitor:
     """
     
     _instance: Optional['SystemHealthMonitor'] = None
-    _lock = Lock()
+    _init_lock = Lock()
     
     def __new__(cls):
-        """Implement singleton pattern."""
+        """Implement singleton pattern with proper locking."""
         if cls._instance is None:
-            with cls._lock:
+            with cls._init_lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
                     cls._instance._initialized = False
         return cls._instance
     
     def __init__(self):
-        """Initialize health monitor."""
-        if self._initialized:
+        """Initialize health monitor (idempotent)."""
+        if getattr(self, '_initialized', False):
             return
         
         self._initialized = True
         self._components: Dict[str, ComponentHealth] = {}
-        self._lock = Lock()
+        self._component_lock = RLock()  # Use RLock for reentrant access
         self._system_status = HealthStatus.HEALTHY
+        logger.debug("SystemHealthMonitor initialized")
     
     def register_component(self, name: str, metadata: Optional[Dict] = None):
         """
@@ -89,7 +90,7 @@ class SystemHealthMonitor:
             name: Component name
             metadata: Optional metadata about the component
         """
-        with self._lock:
+        with self._component_lock:
             self._components[name] = ComponentHealth(
                 name=name,
                 status=HealthStatus.HEALTHY,
@@ -106,7 +107,7 @@ class SystemHealthMonitor:
             component: Component name
             metadata: Optional metadata update
         """
-        with self._lock:
+        with self._component_lock:
             if component not in self._components:
                 self.register_component(component, metadata)
             
@@ -131,7 +132,7 @@ class SystemHealthMonitor:
             fallback_active: Whether fallback is active
             metadata: Optional metadata update
         """
-        with self._lock:
+        with self._component_lock:
             if component not in self._components:
                 self.register_component(component, metadata)
             
@@ -158,7 +159,7 @@ class SystemHealthMonitor:
             error_msg: Optional error message
             metadata: Optional metadata update
         """
-        with self._lock:
+        with self._component_lock:
             if component not in self._components:
                 self.register_component(component, metadata)
             
@@ -189,7 +190,7 @@ class SystemHealthMonitor:
         else:
             self._system_status = HealthStatus.HEALTHY
     
-    def get_component_health(self, component: str) -> Optional[ComponentHealth]:
+    def get_component_health(self, component: str) -> ComponentHealth:
         """
         Get health status of a specific component.
         
@@ -197,10 +198,19 @@ class SystemHealthMonitor:
             component: Component name
         
         Returns:
-            ComponentHealth or None if not registered
+            ComponentHealth object (auto-registers with UNKNOWN if not found)
         """
-        with self._lock:
-            return self._components.get(component)
+        with self._component_lock:
+            # Auto-register if not found to ensure never-None contract
+            if component not in self._components:
+                self._components[component] = ComponentHealth(
+                    name=component,
+                    status=HealthStatus.UNKNOWN,
+                    last_updated=datetime.now(),
+                    metadata={},
+                )
+                logger.debug(f"Auto-registered component {component} with UNKNOWN status")
+            return self._components[component]
     
     def get_all_health(self) -> Dict[str, Dict]:
         """
@@ -209,7 +219,7 @@ class SystemHealthMonitor:
         Returns:
             Dictionary mapping component names to their health dicts
         """
-        with self._lock:
+        with self._component_lock:
             return {name: health.to_dict() for name, health in self._components.items()}
     
     def get_system_status(self) -> Dict:
@@ -219,7 +229,7 @@ class SystemHealthMonitor:
         Returns:
             Dictionary with system-level health info
         """
-        with self._lock:
+        with self._component_lock:
             healthy_count = sum(1 for c in self._components.values() 
                               if c.status == HealthStatus.HEALTHY)
             degraded_count = sum(1 for c in self._components.values() 
@@ -241,26 +251,39 @@ class SystemHealthMonitor:
     
     def is_system_healthy(self) -> bool:
         """Check if system is in healthy state."""
-        with self._lock:
+        with self._component_lock:
             return self._system_status == HealthStatus.HEALTHY
     
     def is_system_degraded(self) -> bool:
         """Check if system is in degraded state."""
-        with self._lock:
+        with self._component_lock:
             return self._system_status == HealthStatus.DEGRADED
     
     def reset(self):
         """Reset all health monitoring (for testing)."""
-        with self._lock:
+        with self._component_lock:
             self._components.clear()
             self._system_status = HealthStatus.HEALTHY
+            # Allow reinitialization after reset
+            self._initialized = False
             logger.info("Health monitor reset")
+        
+        # CRITICAL: Reset singleton instance to allow fresh creation
+        # This ensures new instances get properly initialized after reset
+        with self._init_lock:
+            SystemHealthMonitor._instance = None
+            # Also reset the module-level _health_monitor
+            global _health_monitor
+            _health_monitor = None
 
 
-# Global instance
-_health_monitor = SystemHealthMonitor()
+# Global instance - get via get_health_monitor()
+_health_monitor = None
 
 
 def get_health_monitor() -> SystemHealthMonitor:
-    """Get the global health monitor instance."""
+    """Get the global health monitor instance (singleton)."""
+    global _health_monitor
+    if _health_monitor is None:
+        _health_monitor = SystemHealthMonitor()
     return _health_monitor

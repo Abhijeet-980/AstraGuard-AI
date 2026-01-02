@@ -63,12 +63,17 @@ class StateMachine:
         self.recovery_duration = 5  # seconds (simulated)
         self.recovery_steps = 0
         
-        # Register with health monitor
-        health_monitor = get_health_monitor()
-        health_monitor.register_component("state_machine", {
-            "initial_state": self.current_state.value,
-            "initial_phase": self.current_phase.value,
-        })
+        # Register with health monitor (guarantee HEALTHY status)
+        try:
+            health_monitor = get_health_monitor()
+            health_monitor.register_component("state_machine", {
+                "initial_state": self.current_state.value,
+                "initial_phase": self.current_phase.value,
+            })
+            # Ensure it's marked as HEALTHY (idempotent)
+            health_monitor.mark_healthy("state_machine")
+        except Exception as e:
+            logger.warning(f"Failed to register state_machine with health monitor: {e}")
     
     def get_current_phase(self) -> MissionPhase:
         """Get the current mission phase."""

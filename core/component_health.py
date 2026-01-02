@@ -264,6 +264,8 @@ class SystemHealthMonitor:
         with self._component_lock:
             self._components.clear()
             self._system_status = HealthStatus.HEALTHY
+            # Allow reinitialization after reset
+            self._initialized = False
             logger.info("Health monitor reset")
 
 

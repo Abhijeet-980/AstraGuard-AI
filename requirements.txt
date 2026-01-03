@@ -6,7 +6,7 @@ scikit-learn==1.5.2
 # Web framework (FastAPI + Streamlit)
 fastapi==0.128.0
 uvicorn[standard]==0.30.0
-streamlit==1.52.2
+streamlit==1.50.0
 altair==5.2.0
 
 # API & async

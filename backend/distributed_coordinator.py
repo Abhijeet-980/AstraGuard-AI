@@ -211,6 +211,60 @@ class DistributedResilienceCoordinator:
                 logger.error(f"Leader renewal error: {e}")
                 await asyncio.sleep(interval)
 
+    def _compute_health_score(self, local_state: Dict[str, Any]) -> float:
+        """Compute normalized health score (0.0-1.0) from component states.
+        
+        Combines weights from:
+        - System health status (40% weight)
+        - Circuit breaker state (35% weight)
+        - Retry metrics state (25% weight)
+        
+        Args:
+            local_state: Comprehensive state dict from get_comprehensive_state()
+            
+        Returns:
+            Normalized health score between 0.0 (failed) and 1.0 (healthy)
+        """
+        # System health status mapping (40% weight)
+        system_status = local_state.get("system", {}).get("status", "UNKNOWN")
+        system_scores = {
+            "HEALTHY": 1.0,
+            "DEGRADED": 0.6,
+            "FAILED": 0.0,
+            "UNKNOWN": 0.5,
+        }
+        system_score = system_scores.get(system_status, 0.5) * 0.40
+
+        # Circuit breaker state mapping (35% weight)
+        cb_state = local_state.get("circuit_breaker", {}).get("state", "UNKNOWN")
+        cb_scores = {
+            "CLOSED": 1.0,
+            "HALF_OPEN": 0.5,
+            "OPEN": 0.0,
+            "UNKNOWN": 0.5,
+        }
+        cb_score = cb_scores.get(cb_state, 0.5) * 0.35
+
+        # Retry metrics state mapping (25% weight)
+        retry_state = local_state.get("retry", {}).get("state", "UNKNOWN")
+        retry_scores = {
+            "STABLE": 1.0,
+            "ELEVATED": 0.5,
+            "CRITICAL": 0.0,
+            "UNKNOWN": 0.5,
+        }
+        retry_score = retry_scores.get(retry_state, 0.5) * 0.25
+
+        # Normalized health score
+        health_score = system_score + cb_score + retry_score
+        
+        logger.debug(
+            f"Computed health_score={health_score:.2f} "
+            f"(system={system_score:.2f}, cb={cb_score:.2f}, retry={retry_score:.2f})"
+        )
+        
+        return health_score
+
     async def _vote_collector(self, interval: int = 5):
         """Collect and register cluster votes.
         
@@ -225,7 +279,9 @@ class DistributedResilienceCoordinator:
                 # Extract values from nested structure
                 circuit_state = local_state.get("circuit_breaker", {}).get("state", "UNKNOWN")
                 fallback_mode = local_state.get("fallback", {}).get("mode", "PRIMARY")
-                health_score = local_state.get("health_score", 0.0)
+                
+                # Compute health_score from available component states
+                health_score = self._compute_health_score(local_state)
 
                 # Create vote
                 vote = {

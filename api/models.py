@@ -130,3 +130,7 @@ class HealthCheckResponse(BaseModel):
     status: str
     version: str
     timestamp: datetime
+    uptime_seconds: Optional[float] = None
+    mission_phase: Optional[str] = None
+    components_status: Optional[Dict[str, Dict[str, Any]]] = None
+    error: Optional[str] = None

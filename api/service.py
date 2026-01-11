@@ -17,6 +17,9 @@ from contextlib import asynccontextmanager
 import secrets
 from pydantic import BaseModel
 
+# Import centralized secrets management
+from core.secrets import get_secret, get_secret_masked
+
 
 from api.models import (
     TelemetryInput,
@@ -46,6 +49,8 @@ from security_engine.predictive_maintenance import (
 )
 from fastapi.responses import Response
 from core.metrics import get_metrics_text, get_metrics_content_type
+from core.rate_limiter import RateLimiter, RateLimitMiddleware, get_rate_limit_config
+from backend.redis_client import RedisClient
 import numpy as np
 
 # Observability imports
@@ -80,10 +85,10 @@ anomaly_history = deque(maxlen=MAX_ANOMALY_HISTORY_SIZE)  # Bounded deque preven
 active_faults = {} # Stores active chaos experiments: {fault_type: expiration_timestamp}
 start_time = time.time()
 
-class ChaosRequest(BaseModel):
-    fault_type: str
-    duration_seconds: int
-
+# Rate limiting
+redis_client = None
+telemetry_limiter = None
+api_limiter = None
 
 
 async def initialize_components():
@@ -113,8 +118,8 @@ def _check_credential_security():
     """
     global _USING_DEFAULT_CREDENTIALS
 
-    metrics_user = os.getenv("METRICS_USER")
-    metrics_password = os.getenv("METRICS_PASSWORD")
+    metrics_user = get_secret("metrics_user")
+    metrics_password = get_secret("metrics_password")
 
     # Check if credentials are set
     if not metrics_user or not metrics_password:
@@ -152,7 +157,7 @@ def _check_credential_security():
             print("\n" + "=" * 70)
             print("🔴 CRITICAL SECURITY WARNING: Using default/weak credentials!")
             print("=" * 70)
-            print(f"Detected credentials: {metrics_user}/{weak_pass}")
+            print(f"Detected credentials: {get_secret_masked('metrics_user')}/{get_secret_masked('metrics_password')}")
             print()
             print("⚠️  THESE CREDENTIALS ARE PUBLICLY KNOWN AND INSECURE!")
             print()
@@ -182,6 +187,8 @@ def _check_credential_security():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    global redis_client, telemetry_limiter, api_limiter
+
     # Security: Check credentials at startup
     _check_credential_security()
 
@@ -191,11 +198,43 @@ async def lifespan(app: FastAPI):
     # Pre-load anomaly detection model async
     await load_model()
 
+    # Initialize rate limiting
+    try:
+        redis_url = get_secret("redis_url")
+        redis_client = RedisClient(redis_url=redis_url)
+        await redis_client.connect()
+
+        # Get rate limit configurations
+        rate_configs = get_rate_limit_config()
+
+        # Create rate limiters
+        telemetry_limiter = RateLimiter(
+            redis_client.redis,
+            "telemetry",
+            rate_configs["telemetry"][0],  # rate_per_second
+            rate_configs["telemetry"][1]   # burst_capacity
+        )
+        api_limiter = RateLimiter(
+            redis_client.redis,
+            "api",
+            rate_configs["api"][0],  # rate_per_second
+            rate_configs["api"][1]   # burst_capacity
+        )
+
+        # Add rate limiting middleware after initialization
+        if telemetry_limiter and api_limiter:
+            app.add_middleware(RateLimitMiddleware, telemetry_limiter=telemetry_limiter, api_limiter=api_limiter)
+
+        print("✅ Rate limiting initialized successfully")
+    except Exception as e:
+        print(f"⚠️  Warning: Rate limiting initialization failed: {e}")
+        print("Rate limiting will be disabled")
+
     # Initialize observability (if available)
     if OBSERVABILITY_ENABLED:
         try:
             logger = get_logger(__name__)
-            setup_json_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
+            setup_json_logging(log_level=get_secret("log_level", "INFO"))
             initialize_tracing()
             setup_auto_instrumentation()
             instrument_fastapi(app)
@@ -209,6 +248,8 @@ async def lifespan(app: FastAPI):
     # Cleanup
     if memory_store:
         memory_store.save()
+    if redis_client:
+        await redis_client.close()
 
 
 # Initialize FastAPI app
@@ -223,10 +264,7 @@ app = FastAPI(
 
 # CORS configuration from environment variables
 # Security: Never use allow_origins=["*"] with allow_credentials=True in production
-ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000"
-).split(",")
+ALLOWED_ORIGINS = get_secret("allowed_origins").split(",")
 
 # CORS middleware
 app.add_middleware(
@@ -236,6 +274,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"],
 )
+
+# Rate limiting middleware will be added in lifespan after initialization
 
 security = HTTPBasic()
 
@@ -261,8 +301,8 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
         HTTPException 401: Invalid credentials
         HTTPException 500: Credentials not configured
     """
-    correct_username = os.getenv("METRICS_USER")
-    correct_password = os.getenv("METRICS_PASSWORD")
+    correct_username = get_secret("metrics_user")
+    correct_password = get_secret("metrics_password")
 
     # Security: Require credentials to be explicitly set
     if not correct_username or not correct_password:
@@ -293,6 +333,87 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+def check_chaos_injection(fault_type: str) -> bool:
+    """Check if a chaos fault is currently active."""
+    if fault_type in active_faults:
+        expiration = active_faults[fault_type]
+        if time.time() > expiration:
+            del active_faults[fault_type]
+            return False
+        return True
+    return False
+
+
+def cleanup_expired_faults():
+    """Clean up expired chaos faults."""
+    current_time = time.time()
+    expired = [k for k, v in active_faults.items() if current_time > v]
+    for k in expired:
+        del active_faults[k]
+
+
+def inject_chaos_fault(fault_type: str, duration_seconds: int) -> dict:
+    """Inject a chaos fault for the specified duration."""
+    expiration = time.time() + duration_seconds
+    active_faults[fault_type] = expiration
+    return {
+        "status": "injected",
+        "fault": fault_type,
+        "expires_at": expiration
+    }
+
+
+def create_response(status: str, data: dict = None, **kwargs) -> dict:
+    """Create a standardized API response with timestamp."""
+    response = {
+        "status": status,
+        "timestamp": datetime.now()
+    }
+    if data:
+        response.update(data)
+    response.update(kwargs)
+    return response
+
+
+def process_telemetry_batch(telemetry_list: list) -> dict:
+    """Process a batch of telemetry data and return aggregated results."""
+    processed_count = 0
+    anomalies_detected = 0
+
+    for telemetry in telemetry_list:
+        try:
+            # Process individual telemetry (extracted from submit_telemetry logic)
+            processed_count += 1
+
+            # Check for anomalies
+            anomaly_score = anomaly_detector.detect_anomaly(telemetry)
+            if anomaly_score > 0.7:
+                anomalies_detected += 1
+
+                # Store anomaly
+                anomaly = AnomalyEvent(
+                    timestamp=datetime.now(),
+                    metric=telemetry.get('metric', 'unknown'),
+                    value=telemetry.get('value', 0.0),
+                    severity_score=anomaly_score,
+                    context=telemetry
+                )
+                anomaly_history.append(anomaly)
+
+        except Exception as e:
+            logger.error(f"Failed to process telemetry: {e}")
+            continue
+    return {
+        "processed": processed_count,
+        "anomalies_detected": anomalies_detected
+    }
+# ============================================================================
+# API Endpoints
+# ============================================================================
 @app.get("/", response_model=HealthCheckResponse)
 async def root():
     """Root endpoint - health check."""
@@ -355,23 +476,17 @@ async def submit_telemetry(telemetry: TelemetryInput, api_key: APIKey = Depends(
     """
     request_start = time.time()
     
-    # CHAROS INJECTION HOOK
+    # CHAOS INJECTION HOOK
     # 1. Network Latency Injection
-    if "network_latency" in active_faults:
-        if time.time() < active_faults["network_latency"]:
-            time.sleep(2.0) # Simulate 2s latency
-        else:
-            del active_faults["network_latency"] # Expired
+    if check_chaos_injection("network_latency"):
+        time.sleep(2.0)  # Simulate 2s latency
 
     # 2. Model Loader Failure Injection
-    if "model_loader" in active_faults:
-        if time.time() < active_faults["model_loader"]:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Chaos Injection: Model Loader Failed"
-            )
-        else:
-            del active_faults["model_loader"] # Expired
+    if check_chaos_injection("model_loader"):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chaos Injection: Model Loader Failed"
+        )
     
     try:
         if OBSERVABILITY_ENABLED:
@@ -545,11 +660,11 @@ async def _process_telemetry(telemetry: TelemetryInput, request_start: float) ->
 
 
 @app.get("/api/v1/telemetry/latest")
-async def get_latest_telemetry():
+async def get_latest_telemetry(api_key: APIKey = Depends(get_api_key)):
     """Get the most recent telemetry data point."""
     if latest_telemetry_data is None:
-        return {"data": None, "message": "No telemetry received yet"}
-    return latest_telemetry_data
+        return create_response("no_data", {"data": None, "message": "No telemetry received yet"})
+    return create_response("success", latest_telemetry_data)
 
 
 @app.post("/api/v1/telemetry/batch", response_model=BatchAnomalyResponse)
@@ -587,15 +702,12 @@ async def get_status(api_key: APIKey = Depends(get_api_key)):
     health_monitor = get_health_monitor()
     components = health_monitor.get_all_health()
 
-    # CHAROS INJECTION HOOK: Redis Failure
-    if "redis_failure" in active_faults:
-        if time.time() < active_faults["redis_failure"]:
-            # Simulate Redis being down/degraded
-            if "memory_store" in components:
-                components["memory_store"]["status"] = "DEGRADED"
-                components["memory_store"]["details"] = "ConnectionRefusedError: Chaos Injection"
-        else:
-            del active_faults["redis_failure"] # Expired
+    # CHAOS INJECTION HOOK: Redis Failure
+    if check_chaos_injection("redis_failure"):
+        # Simulate Redis being down/degraded
+        if "memory_store" in components:
+            components["memory_store"]["status"] = "DEGRADED"
+            components["memory_store"]["details"] = "ConnectionRefusedError: Chaos Injection"
 
     return SystemStatus(
         status="healthy" if all(
@@ -710,12 +822,15 @@ async def get_anomaly_history(
     )
 
 
+class ChaosRequest(BaseModel):
+    fault_type: str
+    duration_seconds: int
+
+
 @app.post("/api/v1/chaos/inject")
-async def inject_fault(request: ChaosRequest):
+async def inject_fault(request: ChaosRequest, api_key: APIKey = Depends(require_permission("admin"))):
     """Trigger a chaos experiment."""
-    expiration = time.time() + request.duration_seconds
-    active_faults[request.fault_type] = expiration
-    return {"status": "injected", "fault": request.fault_type, "expires_at": expiration}
+    return inject_chaos_fault(request.fault_type, request.duration_seconds)
 
 
 
@@ -742,7 +857,7 @@ class UplinkResponse(BaseModel):
     timestamp: datetime
 
 @app.post("/api/v1/uplink", response_model=UplinkResponse)
-async def send_uplink_command(cmd: UplinkCommand):
+async def send_uplink_command(cmd: UplinkCommand, api_key: APIKey = Depends(require_permission("write"))):
     """
     Send a command to a specific satellite or system.
     """
@@ -769,8 +884,7 @@ async def send_uplink_command(cmd: UplinkCommand):
     )
 
 @app.post("/api/v1/analysis/investigate", response_model=AnalysisResponse)
-
-async def investigate_anomaly(request: AnalysisRequest):
+async def investigate_anomaly(request: AnalysisRequest, api_key: APIKey = Depends(get_api_key)):
     """
     AI-powered anomaly investigation (Mocked for MVP).
     Analyzes telemetry context to provide explanations and recommendations.
@@ -808,24 +922,18 @@ async def investigate_anomaly(request: AnalysisRequest):
     )
 
 @app.get("/api/v1/chaos/status")
-
-async def get_chaos_status():
+async def get_chaos_status(api_key: APIKey = Depends(get_api_key)):
     """Get active chaos experiments."""
-    # Clean up expired faults
-    current_time = time.time()
-    expired = [k for k, v in active_faults.items() if current_time > v]
-    for k in expired:
-        del active_faults[k]
-        
-    return {
+    cleanup_expired_faults()
+    return create_response("success", {
         "active_faults": list(active_faults.keys()),
         "details": active_faults
-    }
+    })
 
 
 
 @app.get("/api/v1/replay/session")
-async def get_replay_session(incident_type: str = "VOLTAGE_SPIKE"):
+async def get_replay_session(incident_type: str = "VOLTAGE_SPIKE", api_key: APIKey = Depends(get_api_key)):
     """
     Generate a synthetic replay session (60 seconds) for a given incident type.
     """
@@ -864,7 +972,10 @@ async def get_replay_session(incident_type: str = "VOLTAGE_SPIKE"):
             "anomaly_score": 0.8 if (20 < i < 40) else 0.1 # Mock score
         })
         
-    return {"incident": incident_type, "frames": replay_data}
+    return create_response("success", {
+        "incident": incident_type,
+        "frames": replay_data
+    })
 
 
 # ============================================================================
@@ -872,7 +983,7 @@ async def get_replay_session(incident_type: str = "VOLTAGE_SPIKE"):
 # ============================================================================
 
 @app.post("/api/v1/predictive/train")
-async def train_predictive_models():
+async def train_predictive_models(api_key: APIKey = Depends(require_permission("admin"))):
     """
     Train predictive maintenance models using collected telemetry data.
     """
@@ -886,11 +997,9 @@ async def train_predictive_models():
         # Train models
         metrics = await predictive_engine.train_models()
 
-        return {
-            "status": "training_completed",
-            "metrics": metrics,
-            "timestamp": datetime.now()
-        }
+        return create_response("training_completed", {
+            "metrics": metrics
+        })
 
     except Exception as e:
         logger.error(f"Model training failed: {e}")
@@ -900,36 +1009,33 @@ async def train_predictive_models():
         )
 
 @app.get("/api/v1/predictive/status")
-async def get_predictive_status():
+async def get_predictive_status(api_key: APIKey = Depends(get_api_key)):
     """
     Get the status of the predictive maintenance system.
     """
     if not predictive_engine:
-        return {
-            "status": "not_initialized",
+        return create_response("not_initialized", {
             "message": "Predictive maintenance engine not available"
-        }
+        })
 
     try:
         # Get basic stats
         training_data_count = len(predictive_engine.training_data)
 
-        return {
-            "status": "active",
+        return create_response("active", {
             "training_data_points": training_data_count,
             "models_trained": len(predictive_engine.models),
             "last_prediction": getattr(predictive_engine, '_last_prediction_time', None)
-        }
+        })
 
     except Exception as e:
         logger.error(f"Status check failed: {e}")
-        return {
-            "status": "error",
+        return create_response("error", {
             "message": str(e)
-        }
+        })
 
 @app.post("/api/v1/predictive/predict")
-async def get_predictions(telemetry: TelemetryInput):
+async def get_predictions(telemetry: TelemetryInput, api_key: APIKey = Depends(get_api_key)):
     """
     Get failure predictions for current telemetry data.
     """
@@ -969,10 +1075,9 @@ async def get_predictions(telemetry: TelemetryInput):
                 "preventive_actions": pred.preventive_actions
             })
 
-        return {
-            "predictions": prediction_data,
-            "timestamp": datetime.now()
-        }
+        return create_response("success", {
+            "predictions": prediction_data
+        })
 
     except Exception as e:
         logger.error(f"Prediction failed: {e}")

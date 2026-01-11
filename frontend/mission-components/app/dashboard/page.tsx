@@ -46,18 +46,24 @@ import { HighContrastOverlay } from '../components/biometric/HighContrastOverlay
 import { AutoPilotProposal } from '../components/biometric/AutoPilotProposal';
 import { GroundStationPanel } from '../components/groundStation/GroundStationPanel';
 import { DragMetricsPanel } from '../components/mission/DragMetricsPanel';
+import { LayerControl } from '../components/mission/LayerControl';
 
 const DashboardContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'mission' | 'systems' | 'chaos' | 'uplink' | 'vault' | 'diagnostics'>('mission');
   const [selectedAnomalyForAnalysis, setSelectedAnomalyForAnalysis] = useState<AnomalyEvent | null>(null);
-  const { isConnected, togglePlay, isReplayMode, isBattleMode, setBattleMode, spaceWeather, distortionIntensity, isGeomagneticStorm, executeSystemReset, debrisObjects, closestDebris, proximityLevel, activePlaybook, setActivePlaybook, biometricData, incrementMissedAlerts, resetMissedAlerts, isAutoPilotActive, enableAutoPilot, disableAutoPilot, groundStations, activeStation, switchStation, dragPhysics, executeReboost } = useDashboard();
+  const { isConnected, togglePlay, isReplayMode, toggleReplayMode, isBattleMode, setBattleMode, spaceWeather, distortionIntensity, isGeomagneticStorm, executeSystemReset, debrisObjects, closestDebris, proximityLevel, activePlaybook, setActivePlaybook, biometricData, incrementMissedAlerts, resetMissedAlerts, isAutoPilotActive, enableAutoPilot, disableAutoPilot, groundStations, activeStation, switchStation, dragPhysics, executeReboost } = useDashboard();
   const [showSpaceWeatherAlert, setShowSpaceWeatherAlert] = useState(false);
   const [isRedPhoneCoverOpen, setIsRedPhoneCoverOpen] = useState(false);
-  const [showProximityAlert, setShowProximityAlert] = useState(true);
+  const [showProximityAlert, setShowProximityAlert] = useState(false);
   const [highlightedPanel, setHighlightedPanel] = useState<string | null>(null);
   const [showAutoPilotProposal, setShowAutoPilotProposal] = useState(false);
   const mission = { ...dashboardData.mission, aiHealth: (dashboardData as any).aiHealth, achievements: (dashboardData as any).achievements } as MissionState;
   const [showPalette, setShowPalette] = useState(false);
+
+  // Layer Visibility State
+  const [showGroundStations, setShowGroundStations] = useState(false);
+  const [showDragMetrics, setShowDragMetrics] = useState(false);
+  const [showBiometrics, setShowBiometrics] = useState(false);
 
   // Audio Engine Integration
   const [activeAudio, setActiveAudio] = useState(false);
@@ -143,13 +149,6 @@ const DashboardContent: React.FC = () => {
     isReplayMode
   });
 
-  // Show space weather alert when geomagnetic storm begins
-  React.useEffect(() => {
-    if (isGeomagneticStorm && !showSpaceWeatherAlert) {
-      setShowSpaceWeatherAlert(true);
-    }
-  }, [isGeomagneticStorm, showSpaceWeatherAlert]);
-
   return (
     <div className="dashboard-container min-h-screen text-white font-mono antialiased">
       <CommandHUD />
@@ -166,8 +165,12 @@ const DashboardContent: React.FC = () => {
       <DashboardDimOverlay isActive={isRedPhoneCoverOpen} />
 
       {/* Biometric System */}
-      <BiometricPulse biometricData={biometricData} />
-      <BiometricHUD biometricData={biometricData} />
+      {showBiometrics && (
+        <>
+          <BiometricPulse biometricData={biometricData} />
+          <BiometricHUD biometricData={biometricData} />
+        </>
+      )}
       <HighContrastOverlay
         isActive={biometricData.missedAlerts >= 3}
         missedAlerts={biometricData.missedAlerts}
@@ -190,7 +193,7 @@ const DashboardContent: React.FC = () => {
       <DashboardHeader data={mission} />
 
       {/* Red Phone Reset Button */}
-      <div className="fixed top-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-50">
         <RedPhoneReset onResetConfirm={executeSystemReset} />
       </div>
 
@@ -214,18 +217,56 @@ const DashboardContent: React.FC = () => {
       {/* Panel Highlighting */}
       <PanelHighlight targetPanelId={highlightedPanel} />
 
-      {/* Ground Station Panel */}
-      <GroundStationPanel
-        groundStations={groundStations}
-        activeStation={activeStation}
-        onSwitchStation={switchStation}
+      {/* Layer Control */}
+      <LayerControl
+        showGroundStations={showGroundStations}
+        onToggleGroundStations={() => setShowGroundStations(!showGroundStations)}
+        showDragMetrics={showDragMetrics}
+        onToggleDragMetrics={() => setShowDragMetrics(!showDragMetrics)}
+        showBiometrics={showBiometrics}
+        onToggleBiometrics={() => setShowBiometrics(!showBiometrics)}
+        showProximityAlert={showProximityAlert}
+        onToggleProximityAlert={() => setShowProximityAlert(!showProximityAlert)}
+        isReplayMode={isReplayMode}
+        onToggleReplayMode={toggleReplayMode}
+        showSolarAlert={showSpaceWeatherAlert}
+        onToggleSolarAlert={() => setShowSpaceWeatherAlert(!showSpaceWeatherAlert)}
+        isSolarActivityActive={isGeomagneticStorm || spaceWeather.solarFlux > 50}
       />
 
-      {/* Atmospheric Drag Metrics */}
-      <DragMetricsPanel
-        physics={dragPhysics}
-        onReboost={executeReboost}
-      />
+      {/* Ground Station Panel */}
+      {showGroundStations && (
+        <GroundStationPanel
+          groundStations={groundStations}
+          activeStation={activeStation}
+          onSwitchStation={switchStation}
+        />
+      )}
+
+      {/* Atmospheric Drag Metrics - Adjusted Position via prop or CSS class if flexible, 
+          but here we'll assume it handles itself or we wrap it to move it down if needed.
+          Actually, we should update DragMetricsPanel to accept className or style, 
+          OR just accept that LayerControl is at top-24 and DragPanel might need to move.
+          
+          Current DragMetricsPanel is fixed right-6 top-24. 
+          LayerControl is fixed right-6 top-24. 
+          Overlap!
+          
+          I will update DragMetricsPanel in next step to move to top-36 (top-24 + ~48px).
+       */}
+      {showDragMetrics && (
+        <div className="fixed right-6 top-40 z-30">
+          {/* Wrapping to override position if component allows, 
+                 but component has 'fixed' class. 
+                 It needs to be passed a className or updated.
+                 I'll update the component file separately to accept className or change default.
+              */}
+          <DragMetricsPanel
+            physics={dragPhysics}
+            onReboost={executeReboost}
+          />
+        </div>
+      )}
 
       <div className="flex min-h-screen pt-[100px] lg:pt-[80px] flex-col">
         <nav className="sticky top-[100px] lg:top-[80px] z-20 bg-black/80 backdrop-blur-xl border-b border-teal-500/30 px-6 flex flex-col md:flex-row md:items-center justify-between flex-shrink-0 mb-4" role="tablist">

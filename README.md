@@ -14,6 +14,11 @@
   [![Node.js](https://img.shields.io/badge/node.js-16+-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 
+  ---
+  
+ # [![whatsapp](https://img.shields.io/badge/whatsapp-005571?style=for-the-badge&logo=whatsapp)](https://chat.whatsapp.com/Ka6WKpDdKIxInvpLBO1nCB)
+  
+
   <p align="center">
     <a href="docs/TECHNICAL.md"><strong>📚 Documentation</strong></a> •
     <a href="docs/TECHNICAL_REPORT.md"><strong>📄 Technical Report</strong></a> •
@@ -24,7 +29,7 @@
   <p align="center">
     <a href=".github/ISSUE_TEMPLATE/bug_report.yml">🐛 Report Bug</a> •
     <a href=".github/ISSUE_TEMPLATE/feature_request.yml">✨ Request Feature</a> •
-    <a href="https://chat.whatsapp.com/HZXk0vo62945S33qTXheON">💬 Join WhatsApp Group</a>
+    <a href="https://chat.whatsapp.com/Ka6WKpDdKIxInvpLBO1nCB">💬 Join WhatsApp Group</a>
   </p>
 
   ---
@@ -66,7 +71,7 @@
   - [Data Flow](#data-flow)
 - [✨ Key Features](#-key-features)
   - [Core Capabilities](#core-capabilities)
-  - [Mission-Phase Aware Policies](#-mission-phase-aware-fault-response)
+  - [Mission-Phase Aware Fault Response](#-mission-phase-aware-fault-response)
   - [Error Handling & Resilience](#️-centralized-error-handling--graceful-degradation)
   - [REST API Integration](#-rest-api-for-external-integration)
 - [🎯 Project Goals (ECWoC '26)](#-project-goals-ecwoc-26)
@@ -2386,8 +2391,30 @@ python cli.py lint
 # Type checking with mypy
 python cli.py typecheck
 
+# Security scanning (Bandit + Safety)
+python cli.py security
+
 # Run all checks
-python cli.py check  # format + lint + typecheck + tests
+python cli.py check  # format + lint + typecheck + tests + security
+```
+
+#### Security Scanning
+
+AstraGuard AI includes automated security scanning to detect vulnerabilities:
+
+```bash
+# Install security tools
+pip install -r config/requirements-dev.txt
+
+# Run Bandit (static security analysis)
+bandit -r core anomaly state_machine memory_engine
+
+# Run Safety (dependency vulnerability scanning)
+safety check --file=config/requirements.txt
+safety check --file=config/requirements-dev.txt
+
+# Run all security checks (via test script)
+./run_tests.sh --quality
 ```
 
 ### Docker Setup (Alternative)

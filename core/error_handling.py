@@ -25,6 +25,13 @@ class AstraGuardException(Exception):
     
     def __init__(self, message: str, component: str = "unknown", 
                  context: Optional[Dict[str, Any]] = None):
+        """Initialize AstraGuard exception with metadata.
+        
+        Args:
+            message: Error message
+            component: Component where error occurred
+            context: Additional context data
+        """
         self.message = message
         self.component = component
         self.context = context or {}
@@ -67,16 +74,33 @@ class MemoryEngineError(AstraGuardException):
     pass
 
 
+class PredictiveMaintenanceError(AstraGuardException):
+    """Raised when predictive maintenance operations fail."""
+    pass
+
+
 # ============================================================================
 # Error Classification & Handling
 # ============================================================================
 
+@functools.total_ordering
 class ErrorSeverity(Enum):
     """Severity levels for errors."""
     CRITICAL = "critical"      # System-level failure
     HIGH = "high"              # Component failure, fallback needed
     MEDIUM = "medium"          # Operation failure, retry recommended
     LOW = "low"                # Non-critical warning
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            order = {
+                ErrorSeverity.LOW: 0,
+                ErrorSeverity.MEDIUM: 1,
+                ErrorSeverity.HIGH: 2,
+                ErrorSeverity.CRITICAL: 3
+            }
+            return order[self] < order[other]
+        return NotImplemented
 
 
 @dataclass
@@ -91,6 +115,7 @@ class ErrorContext:
     timestamp: datetime = None
     
     def __post_init__(self):
+        """Initialize default values for ErrorContext."""
         if self.context_data is None:
             self.context_data = {}
         if self.timestamp is None:
@@ -192,7 +217,7 @@ FallbackT = TypeVar('FallbackT')
 def handle_component_error(
     component: str,
     fallback_value: Optional[Any] = None,
-    severity: ErrorSeverity = ErrorSeverity.HIGH,
+    severity: Optional[ErrorSeverity] = None,
     log_traceback: bool = True,
 ) -> Callable[[Callable[..., T]], Callable[..., Union[T, Any]]]:
     """
@@ -221,6 +246,9 @@ def handle_component_error(
                 # Already an AstraGuard exception
                 e.component = component
                 error_ctx = classify_error(e, component)
+                # Apply severity override from decorator if cleaner than map
+                if severity is not None:
+                     error_ctx.severity = severity
                 log_error(error_ctx)
                 if log_traceback:
                     logger.debug(f"Traceback:\n{traceback.format_exc()}")
@@ -228,6 +256,9 @@ def handle_component_error(
             except Exception as e:
                 # Wrap other exceptions
                 error_ctx = classify_error(e, component, {"function": func.__name__})
+                # Apply severity override from decorator
+                if severity is not None:
+                     error_ctx.severity = severity
                 log_error(error_ctx)
                 if log_traceback:
                     logger.debug(f"Traceback:\n{traceback.format_exc()}")
@@ -287,7 +318,19 @@ def safe_execute(
 
 
 class ErrorContext_ContextManager:
-    """Context manager for handling errors in a code block."""
+    """Context manager for handling errors in a code block.
+    
+    Ensures proper resource cleanup and error logging within a context.
+    Automatically captures, classifies, and logs exceptions with structured metadata.
+    
+    Resource cleanup: Automatically cleans up via __exit__ method.
+    Exception handling: All exceptions are logged with component context before processing.
+    
+    Usage:
+        with ErrorContext_ContextManager("component_name", on_error=cleanup_fn) as ctx:
+            # risky operation - resources automatically cleaned on exception or exit
+            pass
+    """
     
     def __init__(
         self,
@@ -297,13 +340,17 @@ class ErrorContext_ContextManager:
         reraise: bool = False,
     ):
         """
-        Initialize error context manager.
+        Initialize error context manager with resource cleanup support.
         
         Args:
-            component: Component name
+            component: Component name for logging and context
             default_return: Value to return on error
-            on_error: Callback to execute on error
-            reraise: Whether to reraise exception after handling
+            on_error: Optional callback for resource cleanup/alerting on error
+            reraise: Whether to reraise exception after logging and cleanup
+        
+        Note:
+            The on_error callback is invoked before resource cleanup in __exit__,
+            allowing for graceful cleanup (file handles, connections, etc).
         """
         self.component = component
         self.default_return = default_return
@@ -312,9 +359,20 @@ class ErrorContext_ContextManager:
         self.error_ctx: Optional[ErrorContext] = None
     
     def __enter__(self):
+        """Enter the error context manager."""
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the error context manager, handling any exceptions.
+        
+        Args:
+            exc_type: Exception type
+            exc_val: Exception value
+            exc_tb: Exception traceback
+            
+        Returns:
+            bool: True to suppress exception, False to propagate
+        """
         if exc_type is None:
             return False  # No exception
         

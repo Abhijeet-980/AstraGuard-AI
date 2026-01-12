@@ -10,6 +10,8 @@ from core.error_handling import (
     ModelLoadError,
     AnomalyEngineError,
 )
+# Import input validation
+from core.input_validation import TelemetryData, ValidationError
 # Import timeout and resource monitoring
 from core.timeout_handler import async_timeout, get_timeout_config, TimeoutError as CustomTimeoutError
 from core.resource_monitor import get_resource_monitor
@@ -128,7 +130,7 @@ async def _load_model_with_retry() -> bool:
     return await _load_model_impl()
 
 
-def load_model() -> bool:
+async def load_model() -> bool:
     """
     Load the anomaly detection model with retry + circuit breaker protection.
 
@@ -143,19 +145,10 @@ def load_model() -> bool:
     global _MODEL, _MODEL_LOADED, _USING_HEURISTIC_MODE
 
     try:
-        # Use asyncio event loop if available, else create one
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
         # Call through retry (handles transient) then circuit breaker (handles cascading)
-        result = loop.run_until_complete(
-            _model_loader_cb.call(
-                _load_model_with_retry,  # Retry wrapper
-                fallback=_load_model_fallback,
-            )
+        result = await _model_loader_cb.call(
+            _load_model_with_retry,  # Retry wrapper
+            fallback=_load_model_fallback,
         )
         return result
 
@@ -190,16 +183,21 @@ def _detect_anomaly_heuristic(data: Dict) -> Tuple[bool, float]:
     score = 0.0
 
     # Conservative thresholds for heuristic mode
-    voltage = data.get("voltage", 8.0)
-    temperature = data.get("temperature", 25.0)
-    gyro = abs(data.get("gyro", 0.0))
+    try:
+        voltage = float(data.get("voltage", 8.0))
+        temperature = float(data.get("temperature", 25.0))
+        gyro = abs(float(data.get("gyro", 0.0)))
 
-    if voltage < 7.0 or voltage > 9.0:
-        score += 0.4
-    if temperature > 40.0:
-        score += 0.3
-    if gyro > 0.1:
-        score += 0.3
+        if voltage < 7.0 or voltage > 9.0:
+            score += 0.4
+        if temperature > 40.0:
+            score += 0.3
+        if gyro > 0.1:
+            score += 0.3
+    except (ValueError, TypeError):
+        # invalid data types in heuristic -> treat as anomalous
+        logger.warning(f"Heuristic mode encountered invalid data types: {data}")
+        score += 0.5
 
     # Add small random noise for simulation realism
     score += random.uniform(0, 0.1)
@@ -209,7 +207,7 @@ def _detect_anomaly_heuristic(data: Dict) -> Tuple[bool, float]:
     return is_anomalous, min(score, 1.0)  # Cap at 1.0
 
 
-def detect_anomaly(data: Dict) -> Tuple[bool, float]:
+async def detect_anomaly(data: Dict) -> Tuple[bool, float]:
     """
     Detect anomaly in telemetry data with resource-aware execution.
 
@@ -253,14 +251,17 @@ def detect_anomaly(data: Dict) -> Tuple[bool, float]:
 
         # Ensure model is loaded once
         if not _MODEL_LOADED:
-            load_model()
+            await load_model()
 
-        # Validate input
-        if not isinstance(data, dict):
+        # Validate input using TelemetryData
+        try:
+            validated_data = TelemetryData.validate(data)
+        except ValidationError as e:
+            logger.warning(f"Telemetry validation failed: {e}")
             raise AnomalyEngineError(
-                f"Invalid data type: expected dict, got {type(data).__name__}",
+                f"Invalid telemetry data: {e}",
                 component="anomaly_detector",
-                context={"data_type": str(type(data))},
+                context={"validation_error": str(e)},
             )
 
         # Use model-based detection if available

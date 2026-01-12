@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.component_health import SystemHealthMonitor, HealthStatus
 from core.metrics import REGISTRY
+from core.resource_monitor import get_resource_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,7 @@ class HealthMonitor:
 
         self.fallback_mode = FallbackMode.PRIMARY
         self.component_health = SystemHealthMonitor()
+        self.resource_monitor = get_resource_monitor()
         self.start_time = datetime.utcnow()
 
         self._lock = Lock()
@@ -119,6 +121,7 @@ class HealthMonitor:
                 "system": self._get_system_health(),
                 "circuit_breaker": self._get_circuit_breaker_state(),
                 "retry": self._get_retry_metrics(),
+                "resources": self._get_resource_health(),
                 "fallback": {
                     "mode": self.fallback_mode.value,
                     "cascade_log": self._fallback_cascade_log[-10:],  # Last 10 entries
@@ -159,7 +162,7 @@ class HealthMonitor:
         }
 
     def _get_circuit_breaker_state(self) -> Dict[str, Any]:
-        """Get circuit breaker state and metrics."""
+        """Get circuit breaker state and metrics with None safety."""
         if not self.cb:
             return {
                 "available": False,
@@ -168,24 +171,39 @@ class HealthMonitor:
                 "failures_total": 0,
                 "successes_total": 0,
                 "trips_total": 0,
+                "consecutive_failures": 0,
             }
 
-        cb_state = getattr(self.cb, "state", "UNKNOWN")
-        metrics = getattr(self.cb, "metrics", None)
+        try:
+            cb_state = getattr(self.cb, "state", "UNKNOWN")
+            metrics = getattr(self.cb, "metrics", None)
 
-        open_duration = 0
-        if cb_state == "OPEN" and metrics and metrics.state_change_time:
-            open_duration = (datetime.now() - metrics.state_change_time).total_seconds()
+            open_duration = 0
+            if cb_state == "OPEN" and metrics is not None and hasattr(metrics, "state_change_time"):
+                state_change = metrics.state_change_time
+                if state_change is not None:
+                    open_duration = (datetime.now() - state_change).total_seconds()
 
-        return {
-            "available": True,
-            "state": str(cb_state),
-            "open_duration_seconds": max(0, open_duration),
-            "failures_total": metrics.failures_total if metrics else 0,
-            "successes_total": metrics.successes_total if metrics else 0,
-            "trips_total": metrics.trips_total if metrics else 0,
-            "consecutive_failures": metrics.consecutive_failures if metrics else 0,
-        }
+            return {
+                "available": True,
+                "state": str(cb_state),
+                "open_duration_seconds": max(0, open_duration),
+                "failures_total": metrics.failures_total if metrics is not None else 0,
+                "successes_total": metrics.successes_total if metrics is not None else 0,
+                "trips_total": metrics.trips_total if metrics is not None else 0,
+                "consecutive_failures": metrics.consecutive_failures if metrics is not None else 0,
+            }
+        except Exception as e:
+            logger.error(f"Error retrieving circuit breaker state: {e}", exc_info=False)
+            return {
+                "available": False,
+                "state": "ERROR",
+                "open_duration_seconds": 0,
+                "failures_total": 0,
+                "successes_total": 0,
+                "trips_total": 0,
+                "consecutive_failures": 0,
+            }
 
     def _get_retry_metrics(self) -> Dict[str, Any]:
         """Get retry failure metrics within time window."""
@@ -226,6 +244,30 @@ class HealthMonitor:
         """Get system uptime in seconds."""
         return (datetime.utcnow() - self.start_time).total_seconds()
 
+    def _get_resource_health(self) -> Dict[str, Any]:
+        """Get resource monitoring status."""
+        try:
+            resource_status = self.resource_monitor.check_resource_health()
+            current_metrics = self.resource_monitor.get_current_metrics()
+
+            return {
+                "status": resource_status,
+                "current_metrics": current_metrics.to_dict(),
+                "available": True
+            }
+        except Exception as e:
+            logger.error(f"Error getting resource health: {e}", exc_info=False)
+            return {
+                "status": {
+                    "cpu": "unknown",
+                    "memory": "unknown",
+                    "disk": "unknown",
+                    "overall": "unknown"
+                },
+                "current_metrics": {},
+                "available": False
+            }
+
     def record_retry_failure(self):
         """Record a retry failure for tracking."""
         with self._lock:
@@ -240,7 +282,7 @@ class HealthMonitor:
         Progressive cascade:
         1. PRIMARY: All systems healthy
         2. HEURISTIC: Circuit breaker open OR high retry failure rate
-        3. SAFE: Multiple component failures
+        3. SAFE: Multiple component failures OR resource exhaustion
 
         Args:
             state: Optional pre-computed health state (for efficiency)
@@ -254,11 +296,13 @@ class HealthMonitor:
         cb_state = state.get("circuit_breaker", {})
         retry_state = state.get("retry", {})
         system_state = state.get("system", {})
+        resource_state = state.get("resources", {})
 
         old_mode = self.fallback_mode
 
         # Determine new mode
-        if system_state.get("failed_components", 0) >= 2:
+        if (system_state.get("failed_components", 0) >= 2 or
+            resource_state.get("status", {}).get("overall") == "critical"):
             new_mode = FallbackMode.SAFE
         elif cb_state.get("state") == "OPEN" or retry_state.get("failures_1h", 0) > 50:
             new_mode = FallbackMode.HEURISTIC
@@ -274,7 +318,7 @@ class HealthMonitor:
                     "from": old_mode.value,
                     "to": new_mode.value,
                     "reason": self._get_cascade_reason(
-                        cb_state, retry_state, system_state
+                        cb_state, retry_state, system_state, resource_state
                     ),
                 }
             )
@@ -295,18 +339,62 @@ class HealthMonitor:
         cb_state: Dict[str, Any],
         retry_state: Dict[str, Any],
         system_state: Dict[str, Any],
+        resource_state: Dict[str, Any],
     ) -> str:
-        """Generate reason for fallback cascade."""
+        """Generate detailed context reason for fallback cascade with full error details."""
         reasons = []
+        error_context: Dict[str, Any] = {}
 
+        # Circuit breaker context
         if cb_state.get("state") == "OPEN":
             reasons.append("circuit_open")
-        if retry_state.get("failures_1h", 0) > 50:
-            reasons.append(f"high_retry_failures({retry_state['failures_1h']})")
-        if system_state.get("failed_components", 0) > 0:
-            reasons.append(f"component_failures({system_state['failed_components']})")
+            error_context["circuit_breaker"] = {
+                "state": cb_state.get("state"),
+                "open_duration_seconds": cb_state.get("open_duration_seconds", 0),
+                "failures_total": cb_state.get("failures_total", 0),
+                "consecutive_failures": cb_state.get("consecutive_failures", 0),
+            }
 
-        return "; ".join(reasons) if reasons else "unknown"
+        # Retry failure context
+        if retry_state.get("failures_1h", 0) > 50:
+            failures = retry_state["failures_1h"]
+            reasons.append(f"high_retry_failures({failures})")
+            error_context["retry_failures"] = {
+                "failures_1h": failures,
+                "failure_rate_per_second": retry_state.get("failure_rate", 0),
+                "state": retry_state.get("state", "UNKNOWN"),
+                "total_attempts": retry_state.get("total_attempts", 0),
+            }
+
+        # Component failure context
+        if system_state.get("failed_components", 0) > 0:
+            failed_count = system_state["failed_components"]
+            reasons.append(f"component_failures({failed_count})")
+            error_context["component_health"] = {
+                "failed_components": failed_count,
+                "degraded_components": system_state.get("degraded_components", 0),
+                "healthy_components": system_state.get("healthy_components", 0),
+                "total_components": system_state.get("total_components", 0),
+            }
+
+        # Resource exhaustion context
+        if resource_state.get("status", {}).get("overall") == "critical":
+            reasons.append("resource_exhaustion")
+            error_context["resource_health"] = {
+                "overall_status": resource_state.get("status", {}).get("overall"),
+                "cpu_status": resource_state.get("status", {}).get("cpu"),
+                "memory_status": resource_state.get("status", {}).get("memory"),
+                "disk_status": resource_state.get("status", {}).get("disk"),
+                "available": resource_state.get("available", False),
+            }
+
+        reason_str = "; ".join(reasons) if reasons else "unknown"
+
+        # Log cascade with full context
+        if error_context:
+            logger.warning(f"Fallback cascade triggered: {reason_str} | Context: {error_context}")
+
+        return reason_str
 
 
 # ============================================================================
@@ -347,7 +435,15 @@ async def prometheus_metrics():
         metrics_output = generate_latest(REGISTRY)
         return Response(content=metrics_output, media_type=CONTENT_TYPE_LATEST)
     except Exception as e:
-        logger.error(f"Error generating metrics: {e}", exc_info=True)
+        logger.error(
+            f"Error generating metrics: {e}",
+            extra={
+                "component": "health_monitor",
+                "endpoint": "/metrics",
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Failed to generate metrics")
 
 
@@ -373,7 +469,15 @@ async def health_state():
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting health state: {e}", exc_info=True)
+        logger.error(
+            f"Error getting health state: {e}",
+            extra={
+                "component": "health_monitor",
+                "endpoint": "/state",
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Failed to get health state")
 
 
@@ -393,7 +497,15 @@ async def trigger_cascade():
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
-        logger.error(f"Error during cascade: {e}", exc_info=True)
+        logger.error(
+            f"Error during cascade: {e}",
+            extra={
+                "component": "health_monitor",
+                "endpoint": "/cascade",
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Failed to evaluate cascade")
 
 

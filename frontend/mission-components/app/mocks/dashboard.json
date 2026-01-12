@@ -1,0 +1,143 @@
+{
+  "mission": {
+    "name": "Astra-01",
+    "phase": "Stable Orbit",
+    "status": "Nominal",
+    "updated": "1:47 PM IST",
+    "anomalyCount": 0,
+    "satellites": [
+      {
+        "id": "sat-1",
+        "name": "Voyager X",
+        "status": "Nominal",
+        "orbit": "LEO",
+        "orbitSlot": "A1",
+        "latency": 45,
+        "task": "Data Dump",
+        "signalStrength": 98
+      },
+      {
+        "id": "sat-2",
+        "name": "Voyager Y",
+        "status": "Nominal",
+        "orbit": "GEO",
+        "orbitSlot": "B2",
+        "latency": 120,
+        "task": "Relay",
+        "signalStrength": 95
+      },
+      {
+        "id": "sat-3",
+        "name": "Voyager Z",
+        "status": "Degraded",
+        "orbit": "MEO",
+        "orbitSlot": "M1",
+        "latency": 200,
+        "task": "Calibration",
+        "signalStrength": 70
+      },
+      {
+        "id": "sat-4",
+        "name": "Astra A",
+        "status": "Nominal",
+        "orbit": "LEO",
+        "orbitSlot": "A2",
+        "latency": 48,
+        "task": "Imaging",
+        "signalStrength": 99
+      },
+      {
+        "id": "sat-5",
+        "name": "Astra B",
+        "status": "Critical",
+        "orbit": "GEO",
+        "orbitSlot": "B3",
+        "latency": 500,
+        "task": "Reboot",
+        "signalStrength": 40
+      },
+      {
+        "id": "sat-6",
+        "name": "Astra C",
+        "status": "Nominal",
+        "orbit": "LEO",
+        "orbitSlot": "A3",
+        "latency": 42,
+        "task": "Idle",
+        "signalStrength": 97
+      }
+    ],
+    "phases": [
+      {
+        "name": "LAUNCH",
+        "status": "complete",
+        "progress": 100,
+        "isActive": false
+      },
+      {
+        "name": "DEPLOYMENT",
+        "status": "complete",
+        "progress": 100,
+        "isActive": false
+      },
+      {
+        "name": "NOMINAL_OPS",
+        "status": "active",
+        "progress": 100,
+        "eta": "Ongoing",
+        "isActive": true
+      },
+      {
+        "name": "PAYLOAD_OPS",
+        "status": "pending",
+        "progress": 0,
+        "isActive": false
+      },
+      {
+        "name": "SAFE_MODE",
+        "status": "pending",
+        "progress": 0,
+        "isActive": false
+      }
+    ],
+    "anomalies": [],
+    "groundStations": [
+      {
+        "id": "gs-1",
+        "name": "Svalbard-A",
+        "lat": 78.22,
+        "lng": 15.65,
+        "weather": "Clear",
+        "signalQuality": 0.98,
+        "connectedSatelliteId": "sat-1"
+      },
+      {
+        "id": "gs-2",
+        "name": "Kourou-Prime",
+        "lat": 5.16,
+        "lng": -52.64,
+        "weather": "Rain",
+        "signalQuality": 0.65,
+        "connectedSatelliteId": "sat-2"
+      },
+      {
+        "id": "gs-3",
+        "name": "Canberra-Deep",
+        "lat": -35.28,
+        "lng": 149.13,
+        "weather": "Clear",
+        "signalQuality": 0.95,
+        "connectedSatelliteId": "sat-3"
+      },
+      {
+        "id": "gs-4",
+        "name": "Haruna-Station",
+        "lat": 36.47,
+        "lng": 138.92,
+        "weather": "Storm",
+        "signalQuality": 0.42,
+        "connectedSatelliteId": "sat-1"
+      }
+    ]
+  }
+}

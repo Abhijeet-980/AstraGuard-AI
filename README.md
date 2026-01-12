@@ -14,6 +14,11 @@
   [![Node.js](https://img.shields.io/badge/node.js-16+-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 
+  ---
+  
+ # [![whatsapp](https://img.shields.io/badge/whatsapp-005571?style=for-the-badge&logo=whatsapp)](https://chat.whatsapp.com/Ka6WKpDdKIxInvpLBO1nCB)
+  
+
   <p align="center">
     <a href="docs/TECHNICAL.md"><strong>📚 Documentation</strong></a> •
     <a href="docs/TECHNICAL_REPORT.md"><strong>📄 Technical Report</strong></a> •
@@ -24,14 +29,34 @@
   <p align="center">
     <a href=".github/ISSUE_TEMPLATE/bug_report.yml">🐛 Report Bug</a> •
     <a href=".github/ISSUE_TEMPLATE/feature_request.yml">✨ Request Feature</a> •
-    <a href="https://chat.whatsapp.com/HZXk0vo62945S33qTXheON">💬 Join WhatsApp Group</a>
+    <a href="https://chat.whatsapp.com/Ka6WKpDdKIxInvpLBO1nCB">💬 Join WhatsApp Group</a>
   </p>
 
   ---
 
-  **Bridging the gap between theoretical security concepts and real-world workflows**
+ ### **Bridging the gap between theoretical security concepts and real-world workflows**
 
 </div>
+
+---
+
+## 🏆 Our Amazing Contributors
+
+**A huge thank you to all the talented developers who have contributed to AstraGuard AI**
+
+<div >
+
+## 🌟 Hall of Fame
+<a href="https://github.com/sr-857/AstraGuard-AI/graphs/contributors?selectedMetric=additions">
+  <img src="https://contrib.rocks/image?repo=sr-857/AstraGuard-AI&max=300" />
+</a>
+
+
+## _Want to see your avatar here? [Make your first contribution today!](CONTRIBUTING.md)_
+
+
+
+
 
 ---
 
@@ -46,7 +71,7 @@
   - [Data Flow](#data-flow)
 - [✨ Key Features](#-key-features)
   - [Core Capabilities](#core-capabilities)
-  - [Mission-Phase Aware Policies](#-mission-phase-aware-fault-response)
+  - [Mission-Phase Aware Fault Response](#-mission-phase-aware-fault-response)
   - [Error Handling & Resilience](#️-centralized-error-handling--graceful-degradation)
   - [REST API Integration](#-rest-api-for-external-integration)
 - [🎯 Project Goals (ECWoC '26)](#-project-goals-ecwoc-26)
@@ -1063,7 +1088,8 @@ analysis = analyzer.analyze_attack_surface(scan_results)
 | **⚡ Real-Time Streaming** | High-performance telemetry processing with sub-second latency | Pathway |
 | **🧠 Adaptive Memory** | Context-aware decision making based on historical anomaly patterns | Vector embeddings |
 | **🎯 Smart Prioritization** | Intelligent target selection based on exploitability and mission impact | AI reasoning |
-| **📈 Health Monitoring** | Component-level degradation tracking with automated failover | Centralized error handling |
+| **� Explainable Anomaly Insights** | Per-anomaly explanations including feature importances, SHAP values, and confidence scores to increase operator trust and transparency | React + visualization components |
+| **�📈 Health Monitoring** | Component-level degradation tracking with automated failover | Centralized error handling |
 
 ---
 
@@ -1801,7 +1827,42 @@ We've organized issues by skill level:
 
 ---
 
-## 📂 Project Structure
+## � Intelligent API Rate Limiting
+
+AstraGuard AI features an advanced, adaptive rate limiting system that protects against abuse while ensuring optimal user experience:
+
+### Key Features
+
+- **🧠 Adaptive Rate Limiting**: Automatically adjusts limits based on real-time system health metrics
+- **📊 System Health Integration**: Monitors CPU, memory, active connections, and anomaly scores
+- **🎯 Intelligent Queuing**: Prioritizes critical requests during high load periods
+- **👤 User Feedback**: Provides clear notifications and graceful degradation
+- **🔄 Auto-Retry Logic**: Smart retry mechanisms with exponential backoff
+- **⚡ Real-time Monitoring**: Live system health indicators and request queue status
+
+### How It Works
+
+1. **Health Monitoring**: Continuously monitors backend system health via `/health/state` endpoint
+2. **Dynamic Adjustment**: Reduces rate limits when system health degrades (healthy → degraded → critical)
+3. **Request Queuing**: Queues requests intelligently when limits are reached
+4. **User Notifications**: Shows real-time feedback about rate limiting and system status
+5. **Graceful Degradation**: Maintains functionality while protecting system stability
+
+### Configuration
+
+```bash
+# Environment Variables
+LOG_LEVEL=INFO                    # Backend logging level
+NEXT_PUBLIC_LOG_LEVEL=INFO        # Frontend logging level
+```
+
+### Demo
+
+Try the interactive API rate limiting demo in the frontend to see the system in action!
+
+---
+
+## �📂 Project Structure
 
 ```
 AstraGuard-AI/
@@ -1955,6 +2016,9 @@ git clone git@github.com:sr-857/AstraGuard-AI.git
 
 # Navigate to project directory
 cd AstraGuard-AI
+
+# Verify clone was successful
+ls -la
 ```
 
 #### Step 2: Set Up Python Environment
@@ -1962,6 +2026,9 @@ cd AstraGuard-AI
 **Option A: Using venv (Recommended)**
 
 ```bash
+# Check Python version (must be 3.9+)
+python --version
+
 # Create virtual environment
 python -m venv venv
 
@@ -1971,34 +2038,50 @@ source venv/bin/activate
 # On Windows:
 venv\Scripts\activate
 
-# Upgrade pip
+# Verify activation (you should see (venv) in your prompt)
+which python  # Should point to venv/bin/python or venv\Scripts\python.exe
+
+# Upgrade pip to latest version
 pip install --upgrade pip
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
+
+# Verify installation
+python -c "import fastapi, pydantic, scapy; print('✅ All core dependencies installed')"
 ```
 
 **Option B: Using conda**
 
 ```bash
 # Create conda environment
-conda create -n astraguard python=3.11
+conda create -n astraguard python=3.11 -y
 
 # Activate environment
 conda activate astraguard
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Verify environment
+conda info --envs  # Should show astraguard as active
 ```
 
 #### Step 3: Install Node.js Dependencies (for Dashboard)
 
 ```bash
+# Check Node.js version (must be 16+)
+node --version
+npm --version
+
 # Navigate to dashboard directory
 cd dashboard
 
-# Install dependencies
+# Install Node.js dependencies
 npm install
+
+# Verify installation
+npm list --depth=0
 
 # Return to project root
 cd ..
@@ -2011,76 +2094,223 @@ cd ..
 cp .env.example .env
 
 # Edit .env with your preferred editor
-nano .env  # or vim, code, etc.
+# On Linux/macOS:
+nano .env
+# On Windows:
+notepad .env
+# Or use VS Code:
+code .env
 ```
 
 **Required Environment Variables**:
 
 ```bash
 # .env file
+# ==========================================
 # API Configuration
+# ==========================================
 API_HOST=0.0.0.0
 API_PORT=8000
 API_DEBUG=True
+API_WORKERS=1
 
+# ==========================================
 # Database Configuration
+# ==========================================
 MONGODB_URI=mongodb://localhost:27017
 MONGODB_DB=astraguard
+MONGODB_TIMEOUT=5000
 
+# ==========================================
 # AI Model Configuration
+# ==========================================
 OLLAMA_MODEL=llama3
 OLLAMA_HOST=http://localhost:11434
+OLLAMA_TIMEOUT=30
 
+# ==========================================
 # Mission Configuration
+# ==========================================
 DEFAULT_MISSION_PHASE=NOMINAL_OPS
+MISSION_CONFIG_PATH=config/mission_policies.yaml
 
-# Logging
+# ==========================================
+# Logging Configuration
+# ==========================================
 LOG_LEVEL=INFO
 LOG_FILE=logs/astraguard.log
+LOG_MAX_SIZE=10MB
+LOG_BACKUP_COUNT=5
+
+# ==========================================
+# Security Configuration
+# ==========================================
+SECRET_KEY=your-secret-key-here-change-in-production
+JWT_SECRET=your-jwt-secret-here
+API_KEY=your-api-key-here
+
+# ==========================================
+# Monitoring Configuration
+# ==========================================
+PROMETHEUS_ENABLED=True
+PROMETHEUS_PORT=9090
+GRAFANA_ENABLED=True
 ```
 
-#### Step 5: Install Ollama (for Local AI)
+#### Step 5: Install and Configure Ollama (for Local AI)
 
 **Linux/macOS**:
 ```bash
-curl https://ollama.ai/install.sh | sh
+# Download and install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Verify installation
+ollama --version
+
+# Start Ollama service (runs in background)
+ollama serve &
 ```
 
 **Windows**:
-Download from https://ollama.ai/download
-
-**Pull AI Model**:
 ```bash
-# Pull Llama 3 model (recommended)
+# Download from https://ollama.ai/download
+# Install the .exe file
+# Start Ollama from Start Menu or command line
+ollama serve
+```
+
+**Pull Required AI Models**:
+```bash
+# Pull Llama 3 model (recommended for best performance)
 ollama pull llama3
 
-# Or pull Mistral model
+# Alternative: Pull Mistral model (lighter weight)
 ollama pull mistral
-```
 
-#### Step 6: Initialize Database (Optional)
-
-```bash
-# Start MongoDB (if not already running)
-# Linux/macOS:
-sudo systemctl start mongodb
-
-# Or using Docker:
-docker run -d -p 27017:27017 --name mongodb mongo:latest
-```
-
-#### Step 7: Verify Installation
-
-```bash
-# Run health check
-python cli.py status
+# Verify models are available
+ollama list
 
 # Expected output:
-# ✅ Python environment: OK
+# NAME                    ID              SIZE    MODIFIED
+# llama3:latest           365c0bd3c000    4.7 GB  2 minutes ago
+# mistral:latest          61e88e884507    4.1 GB  1 minute ago
+```
+
+#### Step 6: Set Up Database (MongoDB)
+
+**Option A: Using Docker (Recommended)**
+
+```bash
+# Install Docker if not already installed
+# Linux/macOS: https://docs.docker.com/get-docker/
+# Windows: https://docs.docker.com/docker-for-windows/install/
+
+# Start MongoDB container
+docker run -d \
+  --name astraguard-mongodb \
+  -p 27017:27017 \
+  -v mongodb_data:/data/db \
+  --restart unless-stopped \
+  mongo:latest
+
+# Verify MongoDB is running
+docker ps | grep mongodb
+
+# Test connection
+docker exec -it astraguard-mongodb mongosh --eval "db.runCommand('ping')"
+```
+
+**Option B: Local MongoDB Installation**
+
+```bash
+# Ubuntu/Debian:
+sudo apt update
+sudo apt install mongodb
+
+# macOS:
+brew install mongodb-community
+brew services start mongodb-community
+
+# Windows: Download from mongodb.com
+
+# Verify installation
+mongod --version
+```
+
+#### Step 7: Verify Complete Installation
+
+```bash
+# Run comprehensive health check
+python cli.py status
+
+# Expected output should show all components as HEALTHY:
+# ✅ Python environment: OK (3.11.0)
 # ✅ Dependencies installed: OK
-# ✅ Ollama running: OK
+# ✅ Ollama running: OK (llama3 loaded)
 # ✅ Database connection: OK
 # ✅ Configuration valid: OK
+# ✅ All systems operational
+
+# If any component shows FAILED, check the troubleshooting section below
+```
+
+#### Step 8: Initialize the System (Optional)
+
+```bash
+# Generate sample telemetry data for testing
+python cli.py telemetry --duration 300 --output sample_data.json
+
+# Load mission phase policies
+python cli.py config --validate-policies
+
+# Run initial system tests
+python cli.py test --suite smoke
+```
+
+#### Step 9: Build the Application (Optional)
+
+AstraGuard AI provides cross-platform build scripts for automated setup:
+
+**Option A: Python Build Script (Recommended - Cross-platform)**
+
+```bash
+# Works on Windows, Linux, and macOS
+python build.py
+```
+
+**Option B: Bash Script (Linux/macOS)**
+
+```bash
+# Make executable and run
+chmod +x build.sh
+./build.sh
+```
+
+**Option C: Windows Batch Script**
+
+```batch
+# Run on Windows Command Prompt
+build.bat
+```
+
+**What the build script does:**
+- ✅ Checks for required tools (Python, npm)
+- ✅ Installs Python dependencies from `requirements.txt`
+- ✅ Builds the Next.js frontend in `frontend/as_lp/`
+- ✅ Validates all installations
+- ✅ Provides clear error messages and next steps
+
+**Manual Build (if scripts fail):**
+
+```bash
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Build frontend
+cd frontend/as_lp
+npm install
+npm run build
+cd ../..
 ```
 
 ### Available Commands
@@ -2207,8 +2437,30 @@ python cli.py lint
 # Type checking with mypy
 python cli.py typecheck
 
+# Security scanning (Bandit + Safety)
+python cli.py security
+
 # Run all checks
-python cli.py check  # format + lint + typecheck + tests
+python cli.py check  # format + lint + typecheck + tests + security
+```
+
+#### Security Scanning
+
+AstraGuard AI includes automated security scanning to detect vulnerabilities:
+
+```bash
+# Install security tools
+pip install -r config/requirements-dev.txt
+
+# Run Bandit (static security analysis)
+bandit -r core anomaly state_machine memory_engine
+
+# Run Safety (dependency vulnerability scanning)
+safety check --file=config/requirements.txt
+safety check --file=config/requirements-dev.txt
+
+# Run all security checks (via test script)
+./run_tests.sh --quality
 ```
 
 ### Docker Setup (Alternative)
@@ -2908,8 +3160,87 @@ We're looking for contributors in these areas:
 
 ## 🛠️ Troubleshooting
 
-<details>
-<summary><strong>🐍 Python Version Errors</strong></summary>
+### Quick Diagnosis
+
+Before diving into specific issues, run this diagnostic script:
+
+```bash
+# Create diagnostic script
+cat > diagnose.py << 'EOF'
+#!/usr/bin/env python3
+import sys
+import subprocess
+import requests
+import json
+
+def run_command(cmd, description):
+    """Run command and return success status"""
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+        success = result.returncode == 0
+        print(f"{'✅' if success else '❌'} {description}: {'OK' if success else 'FAILED'}")
+        if not success:
+            print(f"   Error: {result.stderr.strip()}")
+        return success
+    except Exception as e:
+        print(f"❌ {description}: FAILED")
+        print(f"   Error: {e}")
+        return False
+
+def check_service(url, name):
+    """Check if service is responding"""
+    try:
+        response = requests.get(url, timeout=5)
+        success = response.status_code == 200
+        print(f"{'✅' if success else '❌'} {name}: {'OK' if success else 'FAILED'}")
+        if not success:
+            print(f"   Status: {response.status_code}")
+        return success
+    except Exception as e:
+        print(f"❌ {name}: FAILED")
+        print(f"   Error: {e}")
+        return False
+
+print("🔍 AstraGuard AI Diagnostic Report")
+print("=" * 40)
+
+# System checks
+print("\n📋 System Requirements:")
+run_command("python --version", "Python version (3.9+)")
+run_command("node --version", "Node.js version (16+)")
+run_command("npm --version", "NPM version")
+run_command("docker --version", "Docker version")
+
+# Environment checks
+print("\n🐍 Python Environment:")
+run_command("python -c 'import fastapi, pydantic, scapy'", "Core dependencies")
+run_command("python -c 'import ollama'", "Ollama client")
+
+# Service checks
+print("\n🌐 Services:")
+check_service("http://localhost:11434/api/version", "Ollama API")
+check_service("http://localhost:27017", "MongoDB")
+check_service("http://localhost:8000/api/v1/status", "AstraGuard API")
+check_service("http://localhost:8501", "Dashboard")
+
+# Configuration checks
+print("\n⚙️ Configuration:")
+run_command("test -f .env", ".env file exists")
+run_command("test -f config/mission_policies.yaml", "Mission policies")
+run_command("test -d logs", "Logs directory")
+
+print("\n📝 Next Steps:")
+print("1. Fix any FAILED items above")
+print("2. Check logs/astraguard.log for errors")
+print("3. Run 'python cli.py status' for detailed status")
+print("4. See troubleshooting section below for specific issues")
+EOF
+
+# Run diagnostic
+python diagnose.py
+```
+
+### Common Installation Issues
 
 **Issue**: Installation fails with "Python 3.9+ required"
 
@@ -3190,17 +3521,86 @@ docker system df
 
 ### Still Having Issues?
 
+If you're still stuck after trying the solutions above:
+
 1. **📖 Check Documentation**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 2. **🔍 Search Issues**: [GitHub Issues](https://github.com/sr-857/AstraGuard-AI/issues)
 3. **💬 Ask Community**: [WhatsApp Group](https://chat.whatsapp.com/HZXk0vo62945S33qTXheON)
 4. **🐛 Report Bug**: [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.yml)
 
-When reporting issues, include:
-- OS and version
+**When reporting issues, include**:
+- OS and version (`systeminfo` on Windows, `uname -a` on Linux/macOS)
 - Python version (`python --version`)
-- Full error message
-- Steps to reproduce
+- Full error message and stack trace
 - Output of `python cli.py status`
+- Recent logs (`python cli.py logs --tail 50`)
+- Steps to reproduce the issue
+- Expected vs actual behavior
+
+**Debug Information Script**:
+```bash
+# Run this to gather debug info
+cat > debug_info.py << 'EOF'
+#!/usr/bin/env python3
+import sys
+import platform
+import subprocess
+
+print("🔍 AstraGuard AI Debug Information")
+print("=" * 40)
+
+print(f"OS: {platform.system()} {platform.release()}")
+print(f"Python: {sys.version}")
+print(f"Executable: {sys.executable}")
+
+print("\n📦 Installed Packages:")
+try:
+    result = subprocess.run([sys.executable, "-m", "pip", "list"], 
+                          capture_output=True, text=True)
+    for line in result.stdout.split('\n')[:20]:  # First 20 packages
+        if line.strip():
+            print(f"  {line}")
+    if len(result.stdout.split('\n')) > 20:
+        print("  ... (truncated)")
+except:
+    print("  Could not retrieve package list")
+
+print("\n🌐 Environment Variables:")
+import os
+for key in ['OLLAMA_HOST', 'MONGODB_URI', 'API_HOST', 'API_PORT']:
+    value = os.getenv(key, 'Not set')
+    print(f"  {key}: {value}")
+
+print("\n🔧 System Status:")
+try:
+    import requests
+    services = [
+        ("Ollama", "http://localhost:11434/api/version"),
+        ("MongoDB", "http://localhost:27017"),
+        ("API", "http://localhost:8000/api/v1/status"),
+        ("Dashboard", "http://localhost:8501")
+    ]
+    for name, url in services:
+        try:
+            resp = requests.get(url, timeout=3)
+            print(f"  {name}: {resp.status_code}")
+        except:
+            print(f"  {name}: Connection failed")
+except:
+    print("  Could not check services")
+
+print("\n📁 File Structure:")
+import os
+files_to_check = ['.env', 'requirements.txt', 'config/mission_policies.yaml', 'logs/']
+for file in files_to_check:
+    exists = os.path.exists(file)
+    print(f"  {file}: {'Exists' if exists else 'Missing'}")
+EOF
+
+python debug_info.py
+```
+
+**Include this output when asking for help!**
 
 ---
 
@@ -3340,830 +3740,3 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
   
 </div>
 
-# 🏗️ System Architecture
-
-<div align="center">
-
-![AstraGuard Architecture](https://img.shields.io/badge/Architecture-Autonomous%20AI-00ff88?style=for-the-badge&logo=satellite&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Production%20Ready-00d4ff?style=for-the-badge)
-![AI Powered](https://img.shields.io/badge/AI-Powered%20Reasoning-ff00ff?style=for-the-badge&logo=brain&logoColor=white)
-
-</div>
-
-## 📊 Architecture Overview
-
-AstraGuard AI implements a sophisticated, event-driven architecture for real-time satellite telemetry monitoring and autonomous anomaly recovery. The system leverages vector embeddings, adaptive memory, and AI-powered reasoning to provide intelligent, self-healing capabilities.
-
-```mermaid
-graph TB
-    subgraph Input["🛰️ Data Ingestion Layer"]
-        A[Telemetry Stream<br/>Pathway Real-time Processing]
-    end
-    
-    subgraph Processing["⚙️ Processing Layer"]
-        B[Embedding Encoder<br/>Vector Transformation]
-        C[Adaptive Memory Store<br/>Context-Aware Storage]
-    end
-    
-    subgraph Intelligence["🧠 Intelligence Layer"]
-        D[Anomaly Reasoning Agent<br/>AI-Powered Analysis]
-    end
-    
-    subgraph Action["⚡ Action Layer"]
-        E[Response Orchestrator<br/>Action Coordinator]
-        F[System Recovery<br/>Self-Healing Mechanisms]
-    end
-    
-    subgraph Monitoring["📊 Observability"]
-        G[Dashboard<br/>Real-time Visualization]
-    end
-    
-    A -->|Live Data Feed| B
-    B -->|Vector Embeddings| C
-    C -->|Historical Context| D
-    B -->|Current Event Data| D
-    D -->|Recovery Decision| E
-    E -->|Automated Actions| F
-    F -->|Performance Feedback| C
-    
-    D -.->|Reasoning Trace| G
-    C -.->|Memory State| G
-    E -.->|Action Status| G
-    
-    style A fill:#10b981,stroke:#059669,stroke-width:4px,color:#fff
-    style B fill:#3b82f6,stroke:#2563eb,stroke-width:3px,color:#fff
-    style C fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#fff
-    style D fill:#f59e0b,stroke:#d97706,stroke-width:4px,color:#fff
-    style E fill:#ef4444,stroke:#dc2626,stroke-width:3px,color:#fff
-    style F fill:#06b6d4,stroke:#0891b2,stroke-width:3px,color:#fff
-    style G fill:#ec4899,stroke:#db2777,stroke-width:3px,color:#fff
-    
-    classDef inputClass fill:#d1fae5,stroke:#6ee7b7,stroke-width:3px,color:#065f46
-    classDef processClass fill:#dbeafe,stroke:#93c5fd,stroke-width:3px,color:#1e40af
-    classDef intelligenceClass fill:#fef3c7,stroke:#fcd34d,stroke-width:3px,color:#92400e
-    classDef actionClass fill:#fee2e2,stroke:#fca5a5,stroke-width:3px,color:#991b1b
-    classDef monitorClass fill:#fce7f3,stroke:#f9a8d4,stroke-width:3px,color:#9f1239
-    
-    class Input inputClass
-    class Processing processClass
-    class Intelligence intelligenceClass
-    class Action actionClass
-    class Monitoring monitorClass
-```
-
----
-
-## 🔧 Core Components
-
-### 🛰️ **Telemetry Stream (Pathway)**
-
-<table>
-<tr>
-<td width="60%">
-
-**Purpose**: Real-time data ingestion and stream processing
-
-**Key Features**:
-- Continuous satellite telemetry monitoring
-- High-throughput data streaming (1000+ events/sec)
-- Protocol support: MQTT, WebSocket, gRPC
-- Fault-tolerant message queuing
-
-**Technologies**:
-- Pathway for real-time streaming
-- Apache Kafka for message brokering
-- Protocol Buffers for serialization
-
-</td>
-<td width="40%">
-
-```python
-# Example: Telemetry ingestion
-stream = pathway.io.kafka.read(
-    topic="satellite-telemetry",
-    schema=TelemetrySchema,
-    autocommit_duration_ms=1000
-)
-```
-
-</td>
-</tr>
-</table>
-
----
-
-### 📊 **Embedding Encoder**
-
-<table>
-<tr>
-<td width="60%">
-
-**Purpose**: Transform raw telemetry into semantic vector representations
-
-**Key Features**:
-- Multi-modal embedding (numerical, categorical, temporal)
-- Dimensionality: 768-dimensional vectors
-- Context-aware encoding with attention mechanisms
-- Real-time transformation (<10ms latency)
-
-**Technologies**:
-- Sentence Transformers
-- Custom trained embeddings on satellite data
-- FAISS for vector indexing
-
-</td>
-<td width="40%">
-
-```python
-# Vector transformation
-embeddings = encoder.encode(
-    telemetry_data,
-    normalize=True,
-    batch_size=32
-)
-
-# Index for similarity search
-index.add(embeddings)
-```
-
-</td>
-</tr>
-</table>
-
----
-
-### 🧠 **Adaptive Memory Store**
-
-<table>
-<tr>
-<td width="60%">
-
-**Purpose**: Context-aware storage with semantic search capabilities
-
-**Key Features**:
-- Vector database with similarity search
-- Temporal context preservation
-- Automatic memory consolidation
-- Query latency: <50ms (p99)
-
-**Storage Strategy**:
-- Short-term: Redis (1-hour TTL)
-- Long-term: PostgreSQL with pgvector
-- Archive: S3 cold storage
-
-</td>
-<td width="40%">
-
-```python
-# Semantic search
-similar_events = memory.search(
-    query_vector=current_embedding,
-    top_k=10,
-    filters={"timeframe": "24h"}
-)
-
-# Pattern retrieval
-patterns = memory.get_patterns(
-    anomaly_type="temperature_spike"
-)
-```
-
-</td>
-</tr>
-</table>
-
----
-
-### 🤖 **Anomaly Reasoning Agent**
-
-<table>
-<tr>
-<td width="60%">
-
-**Purpose**: AI-powered analysis and decision-making engine
-
-**Key Features**:
-- Multi-model ensemble (GPT-4, Claude, custom LSTM)
-- Chain-of-thought reasoning with explanations
-- Confidence scoring and uncertainty quantification
-- Continuous learning from feedback
-
-**Detection Capabilities**:
-- ✅ Temperature anomalies
-- ✅ Power fluctuations
-- ✅ Communication degradation
-- ✅ Orbital drift patterns
-- ✅ Component failures
-
-</td>
-<td width="40%">
-
-```python
-# Anomaly detection
-result = agent.analyze(
-    current_state=telemetry,
-    historical_context=memory_context,
-    explain=True
-)
-
-# Response
-{
-    "anomaly_detected": True,
-    "confidence": 0.94,
-    "type": "thermal_anomaly",
-    "reasoning": "...",
-    "recommended_action": "..."
-}
-```
-
-</td>
-</tr>
-</table>
-
----
-
-### ⚡ **Response Orchestrator**
-
-<table>
-<tr>
-<td width="60%">
-
-**Purpose**: Coordinate and execute recovery workflows
-
-**Key Features**:
-- Multi-step workflow orchestration
-- Parallel action execution
-- Rollback mechanisms for failed actions
-- Priority-based task scheduling
-
-**Recovery Strategies**:
-- 🔄 Automated subsystem restart
-- 🌡️ Thermal management adjustments
-- 📡 Communication protocol switching
-- 🔋 Power redistribution
-- 🛡️ Safe mode activation
-
-</td>
-<td width="40%">
-
-```python
-# Workflow execution
-workflow = Workflow([
-    Step("isolate_subsystem"),
-    Step("run_diagnostics"),
-    Step("apply_fix", 
-         rollback="restore_backup"),
-    Step("verify_recovery")
-])
-
-orchestrator.execute(
-    workflow,
-    timeout=300,
-    retry_policy="exponential"
-)
-```
-
-</td>
-</tr>
-</table>
-
----
-
-### 🛰️ **System Recovery**
-
-<table>
-<tr>
-<td width="60%">
-
-**Purpose**: Self-healing mechanisms and feedback loops
-
-**Key Features**:
-- Automated recovery action execution
-- Health check verification
-- Performance metrics collection
-- Feedback loop to improve future decisions
-
-**Recovery Metrics**:
-- Mean Time To Detect (MTTD): <2 minutes
-- Mean Time To Recover (MTTR): <5 minutes
-- Success Rate: 94.7%
-- False Positive Rate: <2%
-
-</td>
-<td width="40%">
-
-```python
-# Recovery execution
-recovery.execute_action(
-    action=recommended_action,
-    validate=True,
-    collect_metrics=True
-)
-
-# Feedback
-recovery.report_outcome(
-    success=True,
-    recovery_time=180,
-    side_effects=None
-)
-```
-
-</td>
-</tr>
-</table>
-
----
-
-### 📊 **Monitoring Dashboard**
-
-<table>
-<tr>
-<td width="60%">
-
-**Purpose**: Real-time visualization and system transparency
-
-**Key Features**:
-- Live telemetry visualization
-- Anomaly detection timeline
-- Reasoning trace explorer
-- Action history and audit logs
-
-**Metrics Tracked**:
-- System health scores
-- Anomaly detection rate
-- Recovery success metrics
-- Model performance indicators
-- Resource utilization
-
-</td>
-<td width="40%">
-
-```javascript
-// Dashboard real-time updates
-dashboard.subscribe([
-  'telemetry.live',
-  'anomalies.detected',
-  'actions.executed',
-  'memory.state'
-])
-
-// Visualization
-dashboard.render({
-  charts: ['timeseries', 'heatmap'],
-  refresh_rate: '1s'
-})
-```
-
-</td>
-</tr>
-</table>
-
----
-
-## 🔄 Data Flow Sequence
-
-```mermaid
-%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#10b981','primaryTextColor':'#fff','primaryBorderColor':'#059669','lineColor':'#3b82f6','secondaryColor':'#8b5cf6','tertiaryColor':'#f59e0b','noteBkgColor':'#1e293b','noteTextColor':'#fff','noteBorderColor':'#3b82f6'}}}%%
-sequenceDiagram
-    autonumber
-    participant T as 🛰️<br/>Telemetry<br/>Stream
-    participant E as 📊<br/>Embedding<br/>Encoder
-    participant M as 💾<br/>Adaptive<br/>Memory
-    participant A as 🧠<br/>AI Reasoning<br/>Agent
-    participant O as ⚡<br/>Response<br/>Orchestrator
-    participant R as 🔧<br/>System<br/>Recovery
-    participant D as 📈<br/>Real-time<br/>Dashboard
-    
-    rect rgba(16, 185, 129, 0.15)
-    Note over T,E: 🚀 PHASE 1: Data Ingestion & Transformation
-    T->>+E: Stream raw telemetry data<br/>(1000+ events/sec)
-    E->>E: Validate & normalize data
-    E->>E: Generate 768-dim embeddings
-    E-->>-T: ACK: Processing complete
-    end
-    
-    rect rgba(59, 130, 246, 0.15)
-    Note over E,M: 💾 PHASE 2: Storage & Context Retrieval
-    E->>+M: Store vector embeddings<br/>with metadata
-    M->>M: Index in FAISS<br/>(O(log n) search)
-    M-->>-E: Confirm: Indexed successfully
-    
-    E->>+A: Forward current event<br/>+ embeddings
-    M->>+A: Retrieve historical context<br/>(top-k=10 similar events)
-    end
-    
-    rect rgba(245, 158, 11, 0.15)
-    Note over A: 🔍 PHASE 3: Anomaly Detection & Analysis
-    A->>A: Compute anomaly score<br/>(ensemble models)
-    A->>A: Generate confidence metrics<br/>(0.0 - 1.0)
-    
-    alt Anomaly Detected (confidence > 0.85)
-        A->>A: Execute chain-of-thought<br/>reasoning process
-        A->>A: Identify root cause
-        A->>+D: Stream reasoning trace<br/>for transparency
-        D-->>-A: Logged to dashboard
-    else Normal Operation
-        A->>D: Update healthy status
-        Note over A: Continue monitoring
-    end
-    end
-    
-    rect rgba(239, 68, 68, 0.15)
-    Note over A,O: 🎯 PHASE 4: Decision Making & Planning
-    A->>+O: Send recovery recommendation<br/>with action priority
-    O->>O: Validate action feasibility
-    O->>O: Build execution workflow<br/>(DAG-based)
-    O->>O: Allocate resources
-    O-->>-A: Confirm: Workflow ready
-    end
-    
-    rect rgba(6, 182, 212, 0.15)
-    Note over O,R: 🔧 PHASE 5: Automated Recovery
-    O->>+R: Execute recovery workflow
-    
-    par Parallel Recovery Actions
-        R->>R: Action 1: Isolate subsystem
-        R->>R: Action 2: Run diagnostics
-        R->>R: Action 3: Apply configuration fix
-    and Health Monitoring
-        R->>D: Stream recovery status<br/>(real-time updates)
-    end
-    
-    R->>R: Verify system health
-    
-    alt Recovery Successful ✅
-        R->>+M: Report success + metrics<br/>(recovery_time, steps_taken)
-        M->>M: Update success patterns
-        M-->>-R: Pattern learned
-        R->>D: ✅ Recovery completed
-    else Recovery Failed ❌
-        R->>O: Trigger rollback procedure
-        R->>D: ⚠️ Alert: Manual intervention needed
-    end
-    
-    R-->>-O: Recovery outcome reported
-    end
-    
-    rect rgba(139, 92, 246, 0.15)
-    Note over M,A: 🔄 PHASE 6: Continuous Learning
-    M->>+A: Push updated context<br/>with new patterns
-    A->>A: Retrain anomaly detection<br/>(incremental learning)
-    A->>A: Adjust confidence thresholds
-    A-->>-M: Model updated successfully
-    
-    Note over T,D: 🔁 System continues monitoring...<br/>Ready for next event
-    end
-    
-    rect rgba(236, 72, 153, 0.15)
-    Note over D: 📊 OBSERVABILITY: Continuous Monitoring
-    D->>D: Aggregate metrics across all phases
-    D->>D: Generate real-time visualizations
-    D->>D: Track KPIs: MTTD, MTTR, Success Rate
-    end
-```
-
-### 📋 Sequence Breakdown
-
-<table>
-<tr>
-<th width="15%">Phase</th>
-<th width="25%">Components</th>
-<th width="40%">Actions</th>
-<th width="20%">Duration</th>
-</tr>
-
-<tr>
-<td>🚀 <strong>Phase 1</strong><br/>Ingestion</td>
-<td>Telemetry → Encoder</td>
-<td>
-• Stream validation<br/>
-• Data normalization<br/>
-• Vector embedding generation
-</td>
-<td><code>&lt;50ms</code></td>
-</tr>
-
-<tr>
-<td>💾 <strong>Phase 2</strong><br/>Storage</td>
-<td>Encoder → Memory</td>
-<td>
-• Vector indexing (FAISS)<br/>
-• Context retrieval (k-NN)<br/>
-• Metadata tagging
-</td>
-<td><code>&lt;100ms</code></td>
-</tr>
-
-<tr>
-<td>🔍 <strong>Phase 3</strong><br/>Analysis</td>
-<td>Memory + Agent</td>
-<td>
-• Anomaly scoring<br/>
-• Confidence computation<br/>
-• Root cause analysis<br/>
-• Reasoning trace generation
-</td>
-<td><code>1-5s</code></td>
-</tr>
-
-<tr>
-<td>🎯 <strong>Phase 4</strong><br/>Planning</td>
-<td>Agent → Orchestrator</td>
-<td>
-• Action validation<br/>
-• Workflow creation (DAG)<br/>
-• Resource allocation<br/>
-• Priority assignment
-</td>
-<td><code>500ms-2s</code></td>
-</tr>
-
-<tr>
-<td>🔧 <strong>Phase 5</strong><br/>Recovery</td>
-<td>Orchestrator → Recovery</td>
-<td>
-• Parallel action execution<br/>
-• Health verification<br/>
-• Rollback on failure<br/>
-• Metrics collection
-</td>
-<td><code>2-5min</code></td>
-</tr>
-
-<tr>
-<td>🔄 <strong>Phase 6</strong><br/>Learning</td>
-<td>Recovery → Memory → Agent</td>
-<td>
-• Pattern storage<br/>
-• Model retraining<br/>
-• Threshold adjustment<br/>
-• Knowledge consolidation
-</td>
-<td><code>Background</code></td>
-</tr>
-
-</table>
-
-### 🎯 Key Decision Points
-
-```mermaid
-graph LR
-    A{Anomaly<br/>Detected?} -->|Yes<br/>conf > 0.85| B[Generate<br/>Recovery Plan]
-    A -->|No| C[Continue<br/>Monitoring]
-    
-    B --> D{Recovery<br/>Successful?}
-    D -->|Yes ✅| E[Update<br/>Patterns]
-    D -->|No ❌| F[Trigger<br/>Rollback]
-    
-    E --> G[Learn &<br/>Improve]
-    F --> H[Manual<br/>Intervention]
-    
-    style A fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#fff
-    style B fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
-    style C fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style D fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#fff
-    style E fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style F fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-    style G fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
-    style H fill:#f97316,stroke:#ea580c,stroke-width:2px,color:#fff
-```
-
-### ⚡ Performance Metrics
-
-<div align="center">
-
-| Metric | Target | Actual | Status |
-|:-------|:------:|:------:|:------:|
-| **End-to-End Latency** | <30s | 18.4s | ✅ |
-| **Phase 1-2 (Ingestion)** | <150ms | 127ms | ✅ |
-| **Phase 3 (Analysis)** | <5s | 3.2s | ✅ |
-| **Phase 4 (Planning)** | <2s | 1.4s | ✅ |
-| **Phase 5 (Recovery)** | <5min | 4m 32s | ✅ |
-| **Throughput** | 1000 events/s | 1247 events/s | ✅ |
-| **Success Rate** | >95% | 94.7% | ⚠️ |
-
-</div>
-
-### 🔄 Feedback Loop Illustration
-
-```mermaid
-graph TD
-    A[📥 New Telemetry Event] --> B{Processing}
-    B --> C[🧠 AI Analysis]
-    C --> D{Anomaly?}
-    
-    D -->|Yes| E[⚡ Execute Recovery]
-    D -->|No| F[✅ Normal State]
-    
-    E --> G{Success?}
-    G -->|Yes| H[💾 Learn Pattern]
-    G -->|No| I[🔄 Retry/Escalate]
-    
-    H --> J[🎯 Improve Models]
-    F --> K[📊 Update Baseline]
-    I --> L[👨‍💻 Human Review]
-    
-    J --> M[🔁 Next Event]
-    K --> M
-    L --> M
-    
-    M --> A
-    
-    style A fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style C fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style E fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-    style H fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
-    style J fill:#06b6d4,stroke:#0891b2,stroke-width:2px,color:#fff
-    style M fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
-```
-
----
-
-## ⚙️ Technology Stack
-
-<div align="center">
-
-| Layer | Technologies |
-|:------|:------------|
-| **Streaming** | ![Pathway](https://img.shields.io/badge/Pathway-00ff88?style=flat-square) ![Kafka](https://img.shields.io/badge/Kafka-231F20?style=flat-square&logo=apache-kafka) ![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=flat-square) |
-| **AI/ML** | ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai) ![Anthropic](https://img.shields.io/badge/Anthropic-ff00ff?style=flat-square) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat-square&logo=pytorch&logoColor=white) |
-| **Vector DB** | ![FAISS](https://img.shields.io/badge/FAISS-00d4ff?style=flat-square) ![pgvector](https://img.shields.io/badge/pgvector-336791?style=flat-square&logo=postgresql&logoColor=white) |
-| **Storage** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white) ![S3](https://img.shields.io/badge/AWS_S3-569A31?style=flat-square&logo=amazon-s3&logoColor=white) |
-| **Orchestration** | ![Temporal](https://img.shields.io/badge/Temporal-000000?style=flat-square) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white) ![K8s](https://img.shields.io/badge/Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white) |
-| **Monitoring** | ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white) ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white) |
-
-</div>
-
----
-
-## 📈 Performance Characteristics
-
-<div align="center">
-
-| Metric | Target | Actual |
-|:-------|:------:|:------:|
-| **Ingestion Throughput** | 1000 events/sec | 1,247 events/sec ✅ |
-| **Detection Latency (p99)** | <30s | 18.4s ✅ |
-| **Recovery Time (MTTR)** | <5 min | 4m 32s ✅ |
-| **False Positive Rate** | <3% | 1.8% ✅ |
-| **System Availability** | 99.9% | 99.94% ✅ |
-| **Vector Search Latency** | <50ms | 32ms ✅ |
-
-</div>
-
----
-
-## 🎯 Key Features
-
-<table>
-<tr>
-<td width="50%">
-
-### ⚡ Real-time Processing
-- Sub-second data ingestion
-- Continuous stream processing
-- Zero-downtime deployments
-- Horizontal scalability
-
-### 🧠 AI-Powered Intelligence
-- Multi-model ensemble reasoning
-- Explainable AI decisions
-- Confidence scoring
-- Continuous learning
-
-### 🔄 Self-Healing
-- Automated anomaly recovery
-- Workflow orchestration
-- Rollback mechanisms
-- Health verification
-
-</td>
-<td width="50%">
-
-### 📊 Full Observability
-- Real-time dashboards
-- Audit trails
-- Performance metrics
-- Reasoning transparency
-
-### 🎯 Adaptive Learning
-- Feedback-driven improvements
-- Pattern recognition
-- Memory consolidation
-- Model retraining pipelines
-
-### 🛡️ Production Ready
-- Fault tolerance
-- High availability
-- Security hardening
-- Comprehensive testing
-
-</td>
-</tr>
-</table>
-
----
-
-## 🚀 Deployment Architecture
-
-```mermaid
-graph TB
-    subgraph Cloud["☁️ Cloud Infrastructure (AWS/GCP)"]
-        subgraph K8s["Kubernetes Cluster"]
-            subgraph DataPlane["Data Plane"]
-                Stream[Streaming Service<br/>3 replicas]
-                Encoder[Encoder Service<br/>5 replicas]
-                Agent[AI Agent Service<br/>3 replicas]
-            end
-            
-            subgraph ControlPlane["Control Plane"]
-                Orch[Orchestrator<br/>2 replicas]
-                API[API Gateway<br/>3 replicas]
-            end
-        end
-        
-        subgraph Storage["💾 Storage Layer"]
-            Redis[(Redis Cluster<br/>6 nodes)]
-            Postgres[(PostgreSQL<br/>Primary + 2 Replicas)]
-            Vector[(Vector DB<br/>FAISS Cluster)]
-        end
-        
-        subgraph Monitoring["📊 Monitoring"]
-            Grafana[Grafana]
-            Prom[Prometheus]
-            Logs[Loki]
-        end
-    end
-    
-    Ground[🌍 Ground Station] -->|Telemetry| Stream
-    Satellite[🛰️ Satellites] -->|Data| Stream
-    
-    Stream --> Encoder
-    Encoder --> Agent
-    Agent --> Orch
-    Orch --> Redis
-    Orch --> Postgres
-    Encoder --> Vector
-    
-    DataPlane -.-> Prom
-    ControlPlane -.-> Prom
-    Prom --> Grafana
-    DataPlane -.-> Logs
-    
-    style Cloud fill:#0f172a,stroke:#3b82f6,stroke-width:3px,color:#fff
-    style K8s fill:#1e293b,stroke:#06b6d4,stroke-width:3px,color:#fff
-    style DataPlane fill:#334155,stroke:#10b981,stroke-width:2px,color:#fff
-    style ControlPlane fill:#334155,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style Storage fill:#1e293b,stroke:#8b5cf6,stroke-width:3px,color:#fff
-    style Monitoring fill:#1e293b,stroke:#ec4899,stroke-width:3px,color:#fff
-    
-    style Stream fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style Encoder fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
-    style Agent fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style Orch fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-    style API fill:#06b6d4,stroke:#0891b2,stroke-width:2px,color:#fff
-    
-    style Redis fill:#dc2626,stroke:#991b1b,stroke-width:2px,color:#fff
-    style Postgres fill:#2563eb,stroke:#1e40af,stroke-width:2px,color:#fff
-    style Vector fill:#7c3aed,stroke:#6d28d9,stroke-width:2px,color:#fff
-    
-    style Grafana fill:#f97316,stroke:#ea580c,stroke-width:2px,color:#fff
-    style Prom fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-    style Logs fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
-    
-    style Ground fill:#14b8a6,stroke:#0d9488,stroke-width:2px,color:#fff
-    style Satellite fill:#06b6d4,stroke:#0891b2,stroke-width:2px,color:#fff
-```
-
----
-
-## 📚 Related Documentation
-
-- [API Reference](./docs/API.md)
-- [Deployment Guide](./docs/DEPLOYMENT.md)
-- [Contributing Guidelines](./CONTRIBUTING.md)
-- [Performance Tuning](./docs/PERFORMANCE.md)
-
----
-
-## 🔗 Related Repositories
-
-<div align="center">
-
-[![Core](https://img.shields.io/badge/AstraGuard--AI-Core%20Implementation-00ff88?style=for-the-badge&logo=github)](https://github.com/sr-857/AstraGuard-AI)
-[![SkyHack](https://img.shields.io/badge/AstraGuard--SkyHack--AI-Competition%20Version-00d4ff?style=for-the-badge&logo=github)](https://github.com/sr-857/AstraGuard-SkyHack-AI)
-[![Frontier](https://img.shields.io/badge/AstraGuard--Frontier--AI-Experimental%20Features-ff00ff?style=for-the-badge&logo=github)](https://github.com/sr-857/AstraGuard-Frontier-AI)
-
-</div>
-
----
-
-<div align="center">
-
-**Built with ❤️ for autonomous satellite operations**
-
-![Made with Python](https://img.shields.io/badge/Made%20with-Python-3776AB?style=flat-square&logo=python&logoColor=white)
-![AI Powered](https://img.shields.io/badge/Powered%20by-AI-ff00ff?style=flat-square)
-![Open Source](https://img.shields.io/badge/Open-Source-00ff88?style=flat-square)
-
-</div>

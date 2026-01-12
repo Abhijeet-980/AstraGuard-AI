@@ -7,10 +7,12 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+!frontend/landing\ page/dist/
 downloads/
 eggs/
 .eggs/
 lib/
+!frontend/**/lib/
 lib64/
 parts/
 sdist/
@@ -39,3 +41,9 @@ ENV/
 htmlcov/
 coverage.xml
 coverage*.xml
+
+# Node
+node_modules/
+.next/
+.turbo/
+!**/.vscode/settings.json

@@ -26,6 +26,8 @@ from astraguard.swarm.types import (
     PriorityEnum,
     ActionScope,
     Policy,
+    ActionCommand,
+    ActionCompleted,
 )
 from astraguard.swarm.bus import SwarmMessageBus
 from astraguard.swarm.compressor import StateCompressor, CompressionStats
@@ -37,6 +39,7 @@ from astraguard.swarm.bandwidth_governor import BandwidthGovernor, TokenBucket, 
 from astraguard.swarm.leader_election import LeaderElection, ElectionState, ElectionMetrics
 from astraguard.swarm.consensus import ConsensusEngine, ProposalRequest, ProposalState, ConsensusMetrics, NotLeaderError
 from astraguard.swarm.policy_arbiter import PolicyArbiter, PolicyArbiterMetrics, ConflictResolution
+from astraguard.swarm.action_propagator import ActionPropagator, ActionState, ActionPropagatorMetrics
 
 __all__ = [
     # Models (Issue #397)
@@ -97,4 +100,10 @@ __all__ = [
     "PolicyArbiter",
     "PolicyArbiterMetrics",
     "ConflictResolution",
+    # Action Propagation (Issue #408)
+    "ActionPropagator",
+    "ActionState",
+    "ActionPropagatorMetrics",
+    "ActionCommand",
+    "ActionCompleted",
 ]

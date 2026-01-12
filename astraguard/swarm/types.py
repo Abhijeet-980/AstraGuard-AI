@@ -362,3 +362,143 @@ class Policy:
             agent_id=agent_id,
             timestamp=datetime.fromisoformat(data["timestamp"]),
         )
+
+
+@dataclass
+class ActionCommand:
+    """Command to execute action across constellation.
+    
+    Issue #408: Action propagation and compliance tracking
+    - Broadcast by leader to target agents
+    - Includes deadline for execution
+    - Tracked via unique action_id
+    
+    Attributes:
+        action_id: Unique identifier for this action
+        action: Action type (e.g., "safe_mode", "attitude_adjust")
+        parameters: Action-specific parameters
+        target_agents: List of agents that must execute
+        deadline: Seconds until deadline
+        priority: Priority level (SAFETY > PERFORMANCE > AVAILABILITY)
+        originator: Leader agent ID
+        timestamp: When action was issued
+    """
+    action_id: str
+    action: str
+    parameters: dict[str, Any]
+    target_agents: list[AgentID]
+    deadline: int  # Seconds
+    priority: PriorityEnum
+    originator: AgentID
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+    def __post_init__(self):
+        """Validate command fields."""
+        if not self.action_id:
+            raise ValueError("action_id must not be empty")
+        if not self.action:
+            raise ValueError("action must not be empty")
+        if self.deadline <= 0:
+            raise ValueError("deadline must be positive")
+        if not self.target_agents:
+            raise ValueError("target_agents must not be empty")
+
+    def to_dict(self) -> dict:
+        """Convert to dict for serialization."""
+        return {
+            "action_id": self.action_id,
+            "action": self.action,
+            "parameters": self.parameters,
+            "target_agents": [agent.to_dict() for agent in self.target_agents],
+            "deadline": self.deadline,
+            "priority": self.priority.value,
+            "originator": self.originator.to_dict(),
+            "timestamp": self.timestamp.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ActionCommand":
+        """Deserialize from dictionary."""
+        originator_data = data["originator"]
+        originator = AgentID(
+            constellation=originator_data["constellation"],
+            satellite_serial=originator_data["satellite_serial"],
+            uuid=UUID(originator_data["uuid"]),
+        )
+        
+        target_agents = []
+        for agent_data in data["target_agents"]:
+            target_agents.append(AgentID(
+                constellation=agent_data["constellation"],
+                satellite_serial=agent_data["satellite_serial"],
+                uuid=UUID(agent_data["uuid"]),
+            ))
+        
+        return cls(
+            action_id=data["action_id"],
+            action=data["action"],
+            parameters=data["parameters"],
+            target_agents=target_agents,
+            deadline=data["deadline"],
+            priority=PriorityEnum(data["priority"]),
+            originator=originator,
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+        )
+
+
+@dataclass
+class ActionCompleted:
+    """Agent completion report for executed action.
+    
+    Issue #408: Action propagation and compliance tracking
+    - Sent by agents to leader after executing action
+    - Includes execution status and optional error
+    - Used to track compliance percentage
+    
+    Attributes:
+        action_id: ID of the action that was executed
+        agent_id: Agent that executed the action
+        status: "success", "partial", or "failed"
+        timestamp: When action was completed
+        error: Optional error message if failed
+    """
+    action_id: str
+    agent_id: AgentID
+    status: str  # "success", "partial", "failed"
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+    error: Optional[str] = None
+
+    def __post_init__(self):
+        """Validate completion fields."""
+        if not self.action_id:
+            raise ValueError("action_id must not be empty")
+        if self.status not in ("success", "partial", "failed"):
+            raise ValueError(f"status must be success/partial/failed, got {self.status}")
+
+    def to_dict(self) -> dict:
+        """Convert to dict for serialization."""
+        return {
+            "action_id": self.action_id,
+            "agent_id": self.agent_id.to_dict(),
+            "status": self.status,
+            "timestamp": self.timestamp.isoformat(),
+            "error": self.error,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ActionCompleted":
+        """Deserialize from dictionary."""
+        agent_data = data["agent_id"]
+        agent_id = AgentID(
+            constellation=agent_data["constellation"],
+            satellite_serial=agent_data["satellite_serial"],
+            uuid=UUID(agent_data["uuid"]),
+        )
+        
+        return cls(
+            action_id=data["action_id"],
+            agent_id=agent_id,
+            status=data["status"],
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+            error=data.get("error"),
+        )

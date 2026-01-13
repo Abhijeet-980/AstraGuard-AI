@@ -8,6 +8,7 @@ This module handles the core authentication logic independent of the web framewo
 import os
 import secrets
 import hashlib
+import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any, Set
 from enum import Enum
@@ -26,6 +27,7 @@ from pydantic import BaseModel, Field
 
 from astraguard.logging_config import get_logger
 from core.audit_logger import get_audit_logger, AuditEventType
+from core.secrets import get_secret
 
 # Constants
 API_KEY_LENGTH = 32
@@ -132,10 +134,11 @@ class User:
 @dataclass
 class APIKey:
     """API key with metadata."""
-    id: str
-    user_id: str
+    key: str  # The actual API key string
     name: str
     created_at: datetime
+    id: str = ""  # Optional ID
+    user_id: str = ""  # Optional user_id
     expires_at: Optional[datetime] = None
     permissions: Set[str] = field(default_factory=lambda: {"read", "write"})  # Default permissions
     rate_limit: int = 1000  # Requests per hour
@@ -161,6 +164,7 @@ class APIKeyManager:
         Args:
             keys_file: Path to JSON file storing API keys
         """
+        self.logger = get_logger(__name__)
         self.keys_file = keys_file
         self.api_keys: Dict[str, APIKey] = {}
         self.key_hashes: Dict[str, str] = {}  # Store hashed versions for security
@@ -201,10 +205,10 @@ class APIKeyManager:
                     self.api_keys[key.key] = key
                     self.key_hashes[hashlib.sha256(key.key.encode()).hexdigest()] = key.key
 
-                logger.info(f"Loaded {len(self.api_keys)} API keys from {self.keys_file}")
+                self.logger.info(f"Loaded {len(self.api_keys)} API keys from {self.keys_file}")
 
             except Exception as e:
-                logger.error(f"Failed to load API keys: {e}")
+                self.logger.error(f"Failed to load API keys: {e}")
                 # Create backup default key
                 self._create_default_key()
 
@@ -232,11 +236,25 @@ class APIKeyManager:
             with open(self.keys_file, 'w') as f:
                 json.dump(data, f, indent=2)
 
-            logger.info(f"Saved {len(self.api_keys)} API keys to {self.keys_file}")
+            self.logger.info(f"Saved {len(self.api_keys)} API keys to {self.keys_file}")
 
         except Exception as e:
-            self.logger.error(f"Failed to load API keys: {e}")
-            return {}
+            self.logger.error(f"Failed to save API keys: {e}")
+            
+    def _create_default_key(self) -> None:
+        """Create a default API key for development."""
+        default_key = secrets.token_urlsafe(32)
+        key_obj = APIKey(
+            key=default_key,
+            name="default-dev-key",
+            created_at=datetime.now(),
+            permissions={"read", "write"},
+            metadata={"environment": "development"}
+        )
+        self.api_keys[default_key] = key_obj
+        self.key_hashes[hashlib.sha256(default_key.encode()).hexdigest()] = default_key
+        self._save_keys()
+        self.logger.info(f"Created default API key for development")
 
     def _save_api_keys(self):
         """Save API keys to encrypted storage."""
@@ -605,11 +623,11 @@ class APIKeyManager:
 # Global auth manager instance
 _auth_manager = None
 
-def get_auth_manager() -> AuthManager:
+def get_auth_manager() -> "APIKeyManager":
     """Get global auth manager instance."""
     global _auth_manager
     if _auth_manager is None:
-        _auth_manager = AuthManager()
+        _auth_manager = APIKeyManager()
     return _auth_manager
 
 
@@ -658,7 +676,7 @@ require_analyst = require_permission(Permission.READ_STATUS)
 class UserCreateRequest(BaseModel):
     """Request to create a new user."""
     username: str = Field(..., min_length=3, max_length=50)
-    email: str = Field(..., regex=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
     role: UserRole
     password: Optional[str] = Field(None, min_length=8)
 
